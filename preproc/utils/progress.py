@@ -13,7 +13,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from .console import cout
+from .console import cerr
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -37,7 +37,7 @@ def tracked[T](
         BarColumn(bar_width=20),
         MofNCompleteColumn(),
         TimeRemainingColumn(),
-        console=cout,
+        console=cerr,
         transient=trans,
     ) as progress:
         task = progress.add_task(label, total=total, completed=completed)

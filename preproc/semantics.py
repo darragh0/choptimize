@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import json
+from argparse import ArgumentParser
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 from ollama import Client
@@ -18,7 +20,6 @@ from utils.types import CodeSemEval, PromptSemEval, Uint
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from pathlib import Path
 
     from utils.types import SemanticEvalRow, SyntaxEvalRow
 
@@ -28,86 +29,27 @@ type Dim = Literal["clarity", "specificity", "completeness", "correctness", "rob
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 MODEL: Final = "qwen3-coder:30b"
 MAX_SINGLE_RETRY: Final[Uint] = 10
+_SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
 
-SYSTEM_PROMPT: Final = """SYSTEM_PROMPT:
-Task: Score a PROMPT-CODE pair across 7 quality dimensions (1-5 each).
 
-You will be provided with the following inputs:
-  0. INSTRUCTIONS: These are referencial instructions about the strict JSON output requirement for your response.
-  1. USER_PROMPT: This is a user's prompt wherein they request assistance with programming-related problems.
-  2. LLM_RESPONSE: This is the code an LLM has generated to solve the user's problem (as requested in USER_PROMPT).
-  3. LLM_CODE: This is a concatenated string containing all code blocks from the LLM's response (LLM_RESPONSE).
+def _load_system_prompt() -> str:
+    """Load grading rubric system prompt from file."""
+    try:
+        return _SYSPROMPT_PATH.read_text()
+    except FileNotFoundError:
+        cerr(f"system prompt not found: [cyan]{_SYSPROMPT_PATH}[/]", exit_code=1)
+    except PermissionError:
+        cerr(f"cannot read system prompt: [cyan]{_SYSPROMPT_PATH}[/] (permission denied)", exit_code=1)
+    raise RuntimeError("unreachable")
 
-The inputs are provided in the user message. Inputs can be found by their XLM-like open and closing tags.
-For example, the "INSTRUCTIONS" inputs is encapsulated within <INSTRUCTIONS> and </INSTRUCTIONS>.
 
-Use the full range (3 means genuinely average, not a safe default).
-Score correctness against what the PROMPT asked, not an ideal solution.
-
-PROMPT DIMENSIONS
-
-1. CLARITY — How unambiguous is the intent?
-   1 Incomprehensible
-   2 Mostly unclear — multiple plausible interpretations
-   3 Understandable with effort — requires assumptions
-   4 Clear to a competent developer
-   5 Crystal clear — zero ambiguity
-
-2. SPECIFICITY — How precisely does it describe what is needed?
-   1 Completely vague (e.g. "write some Python")
-   2 Names a task, no constraints
-   3 Core task + some constraints, significant decisions left open
-   4 Inputs, outputs, key constraints specified
-   5 Fully specified — types, edge cases, examples
-
-3. COMPLETENESS — Enough info to produce a correct answer without guessing?
-   1 Missing critical information
-   2 Major gaps requiring significant assumptions
-   3 Moderate gaps
-   4 Nearly complete — minor details inferable
-   5 Fully self-contained
-
-CODE DIMENSIONS
-
-4. CORRECTNESS — Does the code solve what was asked?
-   1 Wrong or irrelevant
-   2 Right idea, critical bugs
-   3 Works on happy path, fails common cases
-   4 Correct, minor edge-case issues
-   5 Fully correct for all cases implied by prompt
-
-5. ROBUSTNESS — Error handling and edge cases?
-   1 Fragile — fails on basic inputs
-   2 Happy path only
-   3 Some defensive coding
-   4 Handles most common edge cases
-   5 Comprehensive — validation, boundaries, graceful errors
-
-6. READABILITY — Naming, structure, clarity?
-   1 Incomprehensible
-   2 Poor names, no structure
-   3 Acceptable — followable with effort
-   4 Good — clear names, logical structure
-   5 Exemplary — self-documenting, Pythonic, consistent style
-
-7. EFFICIENCY — Is the algorithmic approach appropriate?
-   1 Fundamentally wrong approach (exponential where linear exists)
-   2 Naive brute-force, orders of magnitude slower than needed
-   3 Reasonable approach, not optimal
-   4 Good algorithmic choices, minor optimisation possible
-   5 Optimal or near-optimal approach for the problem
-
-Reason briefly about each dimension, then output the final scores as STRICT JSON in the following format. \
-Your reasoning MUST come first, followed by the JSON object as the LAST thing in your response (no backticks, no "json" tag):
-```json
-{"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustness":N,"readability":N,"efficiency":N}
-```"""
+SYSTEM_PROMPT: Final = _load_system_prompt()
 
 
 def json_find_and_loads(txt: str) -> dict:
     """Find, extract & load JSON from str."""
 
-    snip = f"{txt[: -(len(txt) / 2)]!r}"
+    snip = f"{txt[: -(len(txt) // 2)]!r}"
     end = txt.rfind("}")
     if end == -1:
         msg = f"[JSON] No close brace (`}}`): ... {snip}"
@@ -168,16 +110,30 @@ def check_ollama(model: str) -> Client:
     return client
 
 
+def build_syntax_summary(row: SyntaxEvalRow) -> str:
+    """Build human-readable syntax report from static analysis fields."""
+    return (
+        f"parseable={row['parseable']} | lines={row['lines']}"
+        f" | ruff_errors={row['ruff_errors']} | ruff_warnings={row['ruff_warnings']}"
+        f" | ruff_flake8={row['ruff_flake8']} | ruff_bugbear={row['ruff_bugbear']}"
+        f" | ruff_security={row['ruff_security']}"
+        f" | complexity={row['complexity']:.1f} | maintainability={row['maintainability']:.1f}"
+    )
+
+
 def score_row(client: Client, row: SyntaxEvalRow) -> dict:
     """Call LLM & extract JSON scores."""
 
     meow = (
-        """<INSTRUCTIONS>Reason briefly about each dimension as per the system instructions, \
-then output the final scores as the LAST thing in your response as a JSON object (no backticks). \
-Format: {"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustness":N,"readability":N,"efficiency":N}</INSTRUCTIONS>"""
+        "<INSTRUCTIONS>Grade each dimension (1-7) following the rubric exactly. "
+        "Start at the anchor score of 3 and adjust with evidence. Apply mandatory penalties. "
+        "Output the final scores as the LAST thing in your response as a JSON object (no backticks). "
+        'Format: {"clarity":N,"specificity":N,"completeness":N,"correctness":N,'
+        '"robustness":N,"readability":N,"efficiency":N}</INSTRUCTIONS>'
         f"<USER_PROMPT>{row['prompt']}</USER_PROMPT>"
-        f"<LLM_RESPONSE>:{row['response']}</LLM_RESPONSE>"
-        f"<LLM_CODE>:{row['code']}</LLM_CODE>"
+        f"<LLM_RESPONSE>{row['response']}</LLM_RESPONSE>"
+        f"<LLM_CODE>{row['code']}</LLM_CODE>"
+        f"<SYNTAX_REPORT>{build_syntax_summary(row)}</SYNTAX_REPORT>"
     )
 
     resp = client.chat(
@@ -191,19 +147,18 @@ Format: {"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustnes
     return get_llm_json(resp.message.content)
 
 
-def process_row(client: Client, row: SyntaxEvalRow) -> SemanticEvalRow:
+def process_row(client: Client, row: SyntaxEvalRow) -> SemanticEvalRow | None:
     """Evaluate single row on all prompt + code dimensions."""
 
-    err: TypeError | ValueError | None = None
     for _ in range(MAX_SINGLE_RETRY):
         try:
             raw = score_row(client, row)
             break
-        except (TypeError, ValueError) as e:
-            err = e
+        except (TypeError, ValueError):
+            pass
     else:
-        cerr(f"could not score row {row['id']} after {MAX_SINGLE_RETRY} retries", exit_code=1)
-        raise err if err else RuntimeError("unreachable")
+        cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries")
+        return None
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})
 
@@ -258,6 +213,8 @@ def analyse_semantics(df: DataFrame) -> DataFrame:
         with checkpoint_writer(checkpoint_path) as write:
             for _, row in tracked(remaining, "Scoring semantics", total=len(all_rows), completed=len(done)):
                 result = process_row(client, row)
+                if result is None:
+                    continue
                 done.append(result)
                 write(result)
 
@@ -277,9 +234,7 @@ def analyse_semantics(df: DataFrame) -> DataFrame:
 
 
 def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Semantic analysis of prompt-code pairs")
+    parser = ArgumentParser(description="Semantic analysis of prompt-code pairs")
     parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
     args = parser.parse_args()

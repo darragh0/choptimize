@@ -44,3 +44,4 @@ def tracked[T](
         for i, item in enumerate(items):
             yield i, item
             progress.advance(task)
+            progress.refresh()

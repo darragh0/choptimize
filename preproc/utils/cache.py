@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -50,7 +51,9 @@ def parquet_cache(
 
     df = compute()
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path)
+    tmp = Path(tempfile.mktemp(dir=path.parent, suffix=".parquet"))
+    df.to_parquet(tmp)
+    tmp.rename(path)
 
     cout("Cached:")
     _show_cache_stats(df, path)

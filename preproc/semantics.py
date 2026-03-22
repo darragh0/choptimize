@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
@@ -29,6 +30,7 @@ type Dim = Literal["clarity", "specificity", "completeness", "correctness", "rob
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 MODEL: Final = "qwen3-coder:30b"
 MAX_SINGLE_RETRY: Final[Uint] = 10
+NUM_CTX: Final[Uint] = 8192
 _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
 
 
@@ -142,6 +144,7 @@ def score_row(client: Client, row: SyntaxEvalRow) -> dict:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": meow},
         ],
+        options={"num_ctx": NUM_CTX},
     )
 
     return get_llm_json(resp.message.content)
@@ -154,7 +157,7 @@ def process_row(client: Client, row: SyntaxEvalRow) -> SemanticEvalRow | None:
         try:
             raw = score_row(client, row)
             break
-        except (TypeError, ValueError):
+        except Exception:  # noqa: BLE001, S110
             pass
     else:
         cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries")
@@ -170,7 +173,13 @@ def load_checkpoint(path: Path) -> list[SemanticEvalRow]:
 
     records: list[SemanticEvalRow] = []
     with path.open() as f:
-        records.extend([cast("SemanticEvalRow", json.loads(line.strip())) for line in f if line.strip()])
+        for line in f:
+            if not (line := line.strip()):
+                continue
+            try:
+                records.append(cast("SemanticEvalRow", json.loads(line)))
+            except json.JSONDecodeError:
+                break
     return records
 
 
@@ -182,6 +191,7 @@ def checkpoint_writer(path: Path) -> Generator[Callable[[SemanticEvalRow], None]
         def write(row: SemanticEvalRow) -> None:
             f.write(json.dumps(row) + "\n")
             f.flush()
+            os.fsync(f.fileno())
 
         yield write
 
@@ -256,5 +266,5 @@ def main() -> None:
 if __name__ == "__main__":
     from utils.cache import graceful_exit
 
-    with graceful_exit("semantic analysis stopped"):
+    with graceful_exit("semantic analysis stopped", cache_path=CACHE_DIR / "semantic_eval.parquet"):
         main()

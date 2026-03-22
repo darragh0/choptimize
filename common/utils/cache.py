@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 
 from pandas import DataFrame, read_parquet
 
-from utils.display import pretty_path
+from common.utils.display import pretty_path
 
 from .console import cerr, cout
 

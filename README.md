@@ -1,22 +1,31 @@
-# codechat-eval
+# choptimize
 
-This repo evaluates the quality of LLM-generated code in real-world developer conversations, using the [CodeChat-V2.0](https://huggingface.co/datasets/Suzhen/CodeChat-V2.0) dataset (587k conversations from [WildChat](https://huggingface.co/datasets/allenai/WildChat)).
-
-Here, we filter and augment the database with syntactic & semantic analysis findings.
-
-### Scripts
-
+CLI tool for analysing prompt quality in developer-LLM code conversations, using the [CodeChat-V2.0](https://huggingface.co/datasets/Suzhen/CodeChat-V2.0) dataset (587k conversations from [WildChat](https://huggingface.co/datasets/allenai/WildChat)).
 
 > [!IMPORTANT]
 > Requires Python 3.13+
 
+### Structure
+
+| Package      | Description                                        |
+| ------------ | -------------------------------------------------- |
+| `preproc/`   | Data preprocessing pipeline (download, filter, evaluate) |
+| `analysis/`  | Statistical analysis (correlations, visualizations) |
+
+### Preprocessing
 
 | Script                | Description                                |
 | --------------------- | ------------------------------------------ |
-| `scripts/download.py` | Download the CodeChat-V2.0 dataset         |
-| `scripts/filter.py`   | Filter to English prompts with Python code |
-| `scripts/syntax.py`   | Syntactic analysis (ruff & radon)          |
-| `scripts/semantic.py` | Semantic analysis of prompt-code pairs     |
+| `preproc/download.py` | Download the CodeChat-V2.0 dataset         |
+| `preproc/filter.py`   | Filter to English prompts with Python code |
+| `preproc/syntax.py`   | Syntactic analysis (ruff & radon)          |
+| `preproc/semantics.py`| Semantic analysis of prompt-code pairs     |
+
+### Analysis
+
+```sh
+uv run python -m analysis
+```
 
 ### Citation
 
@@ -34,4 +43,4 @@ Here, we filter and augment the database with syntactic & semantic analysis find
 
 ### License
 
-[MIT](https://github.com/darragh0/codechat-eval?tab=MIT-1-ov-file)
+[MIT](https://github.com/darragh0/choptimize?tab=MIT-1-ov-file)

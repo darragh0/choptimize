@@ -25,7 +25,7 @@ from utils.progress import tracked
 from utils.types import SyntaxEval, Uint
 
 if TYPE_CHECKING:
-    from scripts.utils.types import FilteredDSRow, SyntaxEvalRow
+    from preproc.utils.types import FilteredDSRow, SyntaxEvalRow
 
 
 def is_parseable(blocks: list[str]) -> bool:

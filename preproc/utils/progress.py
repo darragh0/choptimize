@@ -18,7 +18,7 @@ from .console import cout
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from scripts.utils.types import Uint
+    from preproc.utils.types import Uint
 
 
 def tracked[T](

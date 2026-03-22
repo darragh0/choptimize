@@ -97,11 +97,8 @@ CODE DIMENSIONS
    4 Good algorithmic choices, minor optimisation possible
    5 Optimal or near-optimal approach for the problem
 
-Reason briefly about each dimension, then output STRICT JSON in the following format. \
-This is the ONLY text that should be in your final output. \
-No introduction, no discussion, ONLY THIS JSON (EXCLUDING backticks and "json" tag).
-
-You must NEVER deviate from this response format:
+Reason briefly about each dimension, then output the final scores as STRICT JSON in the following format. \
+Your reasoning MUST come first, followed by the JSON object as the LAST thing in your response (no backticks, no "json" tag):
 ```json
 {"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustness":N,"readability":N,"efficiency":N}
 ```"""
@@ -137,15 +134,11 @@ def check_json_fmt(js: dict) -> None:
         msg = f"Missing keys: {sorted(missing_keys)!r}"
         raise ValueError(msg)
 
-    errkeys: set[str] = set()
     for k, v in js.items():
-        if not isinstance(v, int):
-            errkeys.add(k)
-        js[k] = max(1, min(5, v))
-
-    if errkeys:
-        msg = f"Non-integer values for keys: {sorted(errkeys)!r}"
-        raise TypeError(msg)
+        if not isinstance(v, (int, float)):
+            msg = f"Non-numeric value for key {k!r}: {v!r}"
+            raise TypeError(msg)
+        js[k] = max(1, min(5, int(v)))
 
 
 def get_llm_json(txt: str | None) -> dict:
@@ -179,14 +172,9 @@ def score_row(client: Client, row: SyntaxEvalRow) -> dict:
     """Call LLM & extract JSON scores."""
 
     meow = (
-        """<INSTRUCTIONS>Reason briefly about each dimension as per the system instructions. \
-Output STRICT JSON in the following format. This is the ONLY text that should be \
-in your final output — no introduction, no discussion, ONLY THIS JSON (EXCLUDING backticks and "json" tag).
-
-You must NEVER deviate from this response format:
-```json
-{"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustness":N,"readability":N,"efficiency":N}
-```</INSTRUCTIONS>"""
+        """<INSTRUCTIONS>Reason briefly about each dimension as per the system instructions, \
+then output the final scores as the LAST thing in your response as a JSON object (no backticks). \
+Format: {"clarity":N,"specificity":N,"completeness":N,"correctness":N,"robustness":N,"readability":N,"efficiency":N}</INSTRUCTIONS>"""
         f"<USER_PROMPT>{row['prompt']}</USER_PROMPT>"
         f"<LLM_RESPONSE>:{row['response']}</LLM_RESPONSE>"
         f"<LLM_CODE>:{row['code']}</LLM_CODE>"
@@ -200,9 +188,6 @@ You must NEVER deviate from this response format:
         ],
     )
 
-    cout(meow)
-    cout("\n-----\n")
-    cout(resp)
     return get_llm_json(resp.message.content)
 
 
@@ -292,12 +277,24 @@ def analyse_semantics(df: DataFrame) -> DataFrame:
 
 
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Semantic analysis of prompt-code pairs")
+    parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
+    args = parser.parse_args()
+
     syntax_fname = "syntax_eval.parquet"
     cache_path = CACHE_DIR / syntax_fname
     if not cache_path.exists():
         cerr(f"run [cyan]scripts/syntax.py[/] first -- missing [cyan]{syntax_fname}[/]", exit_code=1)
 
     df = read_parquet(cache_path)
+
+    if args.sample and args.sample < len(df):
+        df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)
+        cout(f"Sampled {args.sample:,} rows (seed={args.seed})")
+
     analyse_semantics(df)
 
 

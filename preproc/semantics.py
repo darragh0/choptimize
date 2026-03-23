@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 from ollama import Client
 from pandas import DataFrame, concat, read_parquet
 from rich_argparse import RichHelpFormatter
-from utils.cache import CACHE_DIR, parquet_cache
+from utils.cache import CACHE_DIR
 from utils.console import cerr, cout
 from utils.display import show_df_overview
 from utils.progress import tracked
@@ -164,7 +164,7 @@ def process_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) ->
             break
         except Exception as e:  # noqa: BLE001
             last_err = e
-            delay = min(60, 2 * 2**attempt) * uniform(0.75, 1.25)
+            delay = min(60, 2 * 2**attempt) * uniform(0.75, 1.25)  # noqa: S311
             cerr(f"row {row['id']} retry {attempt + 1}/{MAX_SINGLE_RETRY}: {type(e).__name__}: {e}")
             time.sleep(delay)
     else:
@@ -233,7 +233,7 @@ def analyse_semantics(df: DataFrame, model: str, num_ctx: int, shard: tuple[int,
         cache_path = CACHE_DIR / "semantic_eval.parquet"
         checkpoint_path = CACHE_DIR / "semantic_eval.checkpoint.jsonl"
 
-    def compute() -> DataFrame:
+    def compute() -> tuple[DataFrame, int]:
         client = check_ollama(model)
         all_rows = cast("list[SyntaxEvalRow]", df.to_dict("records"))
 

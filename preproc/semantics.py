@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from pathlib import Path
 from random import uniform
@@ -34,6 +36,14 @@ DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL: Final = "gemma3:27b"
 MAX_SINGLE_RETRY: Final[Uint] = 10
 DEFAULT_NUM_CTX: Final[Uint] = 8192
+DEFAULT_PARALLEL: Final[Uint] = 1
+
+JSON_SCHEMA: Final[dict] = {
+    "type": "object",
+    "properties": {dim: {"type": "integer", "minimum": 1, "maximum": 5} for dim in get_args(Dim.__value__)},
+    "required": sorted(get_args(Dim.__value__)),
+    "additionalProperties": False,
+}
 _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
 
 
@@ -130,11 +140,8 @@ def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
     """Call LLM & extract JSON scores."""
 
     meow = (
-        "<INSTRUCTIONS>Grade each dimension (1-7) following the rubric exactly. "
-        "Start at the anchor score of 3 and adjust with evidence. Apply mandatory penalties. "
-        "Output the final scores as the LAST thing in your response as a JSON object (no backticks). "
-        'Format: {"clarity":N,"specificity":N,"completeness":N,"correctness":N,'
-        '"robustness":N,"readability":N,"efficiency":N}</INSTRUCTIONS>'
+        "<INSTRUCTIONS>Grade each dimension (1-5) following the rubric exactly. "
+        "Start at the anchor score of 3 and adjust with evidence. Apply mandatory penalties.</INSTRUCTIONS>"
         f"<USER_PROMPT>{row['prompt']}</USER_PROMPT>"
         f"<LLM_RESPONSE>{row['response']}</LLM_RESPONSE>"
         f"<LLM_CODE>{row['code']}</LLM_CODE>"
@@ -147,11 +154,20 @@ def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": meow},
         ],
+        format=JSON_SCHEMA,
         options={"num_ctx": num_ctx, "flash_attention": True, "num_batch": 1024},
         keep_alive="30m",
     )
 
-    return get_llm_json(resp.message.content)
+    txt = resp.message.content
+    if txt is None:
+        msg = "LLM returned None"
+        raise ValueError(msg)
+
+    js: dict = json.loads(txt)
+    for k in DIMS:
+        js[k] = max(1, min(5, int(js[k])))
+    return js
 
 
 def process_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> SemanticEvalRow | None:
@@ -223,7 +239,9 @@ def _shard_paths(shard_id: int, shard_total: int) -> tuple[Path, Path]:
     )
 
 
-def analyse_semantics(df: DataFrame, model: str, num_ctx: int, shard: tuple[int, int] | None = None) -> DataFrame:
+def analyse_semantics(
+    df: DataFrame, model: str, num_ctx: int, shard: tuple[int, int] | None = None, parallel: int = 1,
+) -> DataFrame:
     """Run LLM-as-a-judge semantic analysis on each row."""
 
     if shard:
@@ -247,14 +265,31 @@ def analyse_semantics(df: DataFrame, model: str, num_ctx: int, shard: tuple[int,
         remaining = [r for r in all_rows if r["id"] not in done_ids]
 
         skipped = 0
-        with checkpoint_writer(checkpoint_path) as write:
-            for _, row in tracked(remaining, "Scoring semantics", total=len(all_rows), completed=len(done)):
-                result = process_row(client, row, model, num_ctx)
-                if result is None:
-                    skipped += 1
-                    continue
-                done.append(result)
-                write(result)
+        write_lock = threading.Lock()
+
+        if parallel <= 1:
+            with checkpoint_writer(checkpoint_path) as write:
+                for _, row in tracked(remaining, "Scoring semantics", total=len(all_rows), completed=len(done)):
+                    result = process_row(client, row, model, num_ctx)
+                    if result is None:
+                        skipped += 1
+                        continue
+                    done.append(result)
+                    write(result)
+        else:
+            cout(f"Running {parallel} parallel workers")
+            with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
+                futures = {pool.submit(process_row, client, row, model, num_ctx): row for row in remaining}
+                for future in tracked(
+                    as_completed(futures), "Scoring semantics", total=len(all_rows), completed=len(done),
+                ):
+                    result = future.result()
+                    if result is None:
+                        skipped += 1
+                        continue
+                    with write_lock:
+                        done.append(result)
+                        write(result)
 
         if skipped:
             cerr(f"{skipped}/{skipped + len(done)} rows failed and were skipped — checkpoint kept, parquet NOT cached")
@@ -338,6 +373,7 @@ def main() -> None:
         default=DEFAULT_NUM_CTX,
         help=f"Context window size (default: [cyan]{DEFAULT_NUM_CTX}[/])",
     )
+    parser.add_argument("--parallel", type=int, default=DEFAULT_PARALLEL, help=f"Concurrent workers (default: {DEFAULT_PARALLEL})")
     parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
     parser.add_argument("--merge", action="store_true", help="Only merges shard parquet files into final output")
     args = parser.parse_args()
@@ -359,7 +395,7 @@ def main() -> None:
         df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)
         cout(f"Sampled {args.sample:,} rows (seed={args.seed})")
 
-    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, shard=shard)
+    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, shard=shard, parallel=args.parallel)
 
 
 if __name__ == "__main__":

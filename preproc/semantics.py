@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 type Dim = Literal["clarity", "specificity", "completeness", "correctness", "robustness", "readability", "efficiency"]
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
-MODEL: Final = "qwen3-coder:30b"
+MODEL: Final = "gemma3:27b"
 MAX_SINGLE_RETRY: Final[Uint] = 10
 NUM_CTX: Final[Uint] = 8192
 _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
@@ -144,7 +144,8 @@ def score_row(client: Client, row: SyntaxEvalRow) -> dict:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": meow},
         ],
-        options={"num_ctx": NUM_CTX},
+        options={"num_ctx": NUM_CTX, "flash_attention": True, "num_batch": 1024},
+        keep_alive="30m",
     )
 
     return get_llm_json(resp.message.content)

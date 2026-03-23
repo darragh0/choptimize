@@ -1,4 +1,4 @@
-"""Display utils & console handles (shorthands for `cout.print` & `cerr.print`)."""
+"""Display utils (+ shorthands for `cout.print` & `cerr.print`)."""
 
 from __future__ import annotations
 

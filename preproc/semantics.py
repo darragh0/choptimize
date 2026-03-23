@@ -6,13 +6,16 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
+from random import uniform
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 from ollama import Client
-from pandas import DataFrame, read_parquet
+from pandas import DataFrame, concat, read_parquet
+from rich_argparse import RichHelpFormatter
 from utils.cache import CACHE_DIR, parquet_cache
 from utils.console import cerr, cout
 from utils.display import show_df_overview
@@ -28,9 +31,9 @@ if TYPE_CHECKING:
 type Dim = Literal["clarity", "specificity", "completeness", "correctness", "robustness", "readability", "efficiency"]
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
-MODEL: Final = "gemma3:27b"
+DEFAULT_MODEL: Final = "gemma3:27b"
 MAX_SINGLE_RETRY: Final[Uint] = 10
-NUM_CTX: Final[Uint] = 8192
+DEFAULT_NUM_CTX: Final[Uint] = 8192
 _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
 
 
@@ -123,7 +126,7 @@ def build_syntax_summary(row: SyntaxEvalRow) -> str:
     )
 
 
-def score_row(client: Client, row: SyntaxEvalRow) -> dict:
+def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> dict:
     """Call LLM & extract JSON scores."""
 
     meow = (
@@ -139,29 +142,33 @@ def score_row(client: Client, row: SyntaxEvalRow) -> dict:
     )
 
     resp = client.chat(
-        model=MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": meow},
         ],
-        options={"num_ctx": NUM_CTX, "flash_attention": True, "num_batch": 1024},
+        options={"num_ctx": num_ctx, "flash_attention": True, "num_batch": 1024},
         keep_alive="30m",
     )
 
     return get_llm_json(resp.message.content)
 
 
-def process_row(client: Client, row: SyntaxEvalRow) -> SemanticEvalRow | None:
+def process_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> SemanticEvalRow | None:
     """Evaluate single row on all prompt + code dimensions."""
 
-    for _ in range(MAX_SINGLE_RETRY):
+    last_err: Exception | None = None
+    for attempt in range(MAX_SINGLE_RETRY):
         try:
-            raw = score_row(client, row)
+            raw = score_row(client, row, model, num_ctx)
             break
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            delay = min(60, 2 * 2**attempt) * uniform(0.75, 1.25)
+            cerr(f"row {row['id']} retry {attempt + 1}/{MAX_SINGLE_RETRY}: {type(e).__name__}: {e}")
+            time.sleep(delay)
     else:
-        cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries")
+        cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries (last: {last_err})")
         return None
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})
@@ -207,33 +214,66 @@ def show_oview(df: DataFrame) -> None:
         cout(f"  [dim]{col:<20}[/] mean={mean:.2f}  median={med:.2f}")
 
 
-def analyse_semantics(df: DataFrame) -> DataFrame:
+def _shard_paths(shard_id: int, shard_total: int) -> tuple[Path, Path]:
+    """Return (cache_path, checkpoint_path) for a given shard."""
+    tag = f"shard_{shard_id}_of_{shard_total}"
+    return (
+        CACHE_DIR / f"semantic_eval.{tag}.parquet",
+        CACHE_DIR / f"semantic_eval.{tag}.checkpoint.jsonl",
+    )
+
+
+def analyse_semantics(df: DataFrame, model: str, num_ctx: int, shard: tuple[int, int] | None = None) -> DataFrame:
     """Run LLM-as-a-judge semantic analysis on each row."""
 
-    cache_path = CACHE_DIR / "semantic_eval.parquet"
-    checkpoint_path = CACHE_DIR / "semantic_eval.checkpoint.jsonl"
+    if shard:
+        shard_id, shard_total = shard
+        cache_path, checkpoint_path = _shard_paths(shard_id, shard_total)
+    else:
+        cache_path = CACHE_DIR / "semantic_eval.parquet"
+        checkpoint_path = CACHE_DIR / "semantic_eval.checkpoint.jsonl"
 
     def compute() -> DataFrame:
-        client = check_ollama(MODEL)
+        client = check_ollama(model)
         all_rows = cast("list[SyntaxEvalRow]", df.to_dict("records"))
+
+        if shard:
+            shard_id, shard_total = shard
+            all_rows = all_rows[shard_id - 1 :: shard_total]
+            cout(f"Shard {shard_id}/{shard_total}: {len(all_rows):,} rows")
 
         done = load_checkpoint(checkpoint_path)
         done_ids = {r["id"] for r in done}
         remaining = [r for r in all_rows if r["id"] not in done_ids]
 
+        skipped = 0
         with checkpoint_writer(checkpoint_path) as write:
             for _, row in tracked(remaining, "Scoring semantics", total=len(all_rows), completed=len(done)):
-                result = process_row(client, row)
+                result = process_row(client, row, model, num_ctx)
                 if result is None:
+                    skipped += 1
                     continue
                 done.append(result)
                 write(result)
 
-        done.sort(key=lambda r: r["id"])
-        checkpoint_path.unlink(missing_ok=True)
-        return DataFrame(done)
+        if skipped:
+            cerr(f"{skipped}/{skipped + len(done)} rows failed and were skipped — checkpoint kept, parquet NOT cached")
 
-    result = parquet_cache(cache_path, compute)
+        done.sort(key=lambda r: r["id"])
+
+        if skipped == 0:
+            checkpoint_path.unlink(missing_ok=True)
+
+        return DataFrame(done), skipped
+
+    if cache_path.exists():
+        result = read_parquet(cache_path)
+    else:
+        result, skipped = compute()
+        if skipped == 0:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            result.to_parquet(cache_path)
+            cout(f"Cached to [cyan]{cache_path}[/]")
     cout()
 
     show_oview(result)
@@ -244,11 +284,69 @@ def analyse_semantics(df: DataFrame) -> DataFrame:
     return result
 
 
+def merge_shards() -> None:
+    """Merge shard parquet files into final semantic_eval.parquet."""
+    shard_files = sorted(CACHE_DIR.glob("semantic_eval.shard_*.parquet"))
+    if not shard_files:
+        cerr("no shard files found in [cyan]data/[/]", exit_code=1)
+
+    cout(f"Merging {len(shard_files)} shard files:")
+    dfs: list[DataFrame] = []
+    for f in shard_files:
+        df = read_parquet(f)
+        cout(f"  {f.name}: {len(df):,} rows")
+        dfs.append(df)
+
+    merged = concat(dfs, ignore_index=True).sort_values("id").reset_index(drop=True)
+    dup_ids = merged[merged["id"].duplicated(keep=False)]
+    if not dup_ids.empty:
+        cerr(f"WARNING: {len(dup_ids)} duplicate IDs found — check shard overlap")
+
+    out_path = CACHE_DIR / "semantic_eval.parquet"
+    merged.to_parquet(out_path)
+    cout(f"Wrote {len(merged):,} rows to [cyan]{out_path}[/]")
+
+    for f in shard_files:
+        f.unlink()
+    # Clean up shard checkpoints too
+    for f in CACHE_DIR.glob("semantic_eval.shard_*.checkpoint.jsonl"):
+        f.unlink()
+    cout("Cleaned up shard files")
+
+
+def parse_shard(value: str) -> tuple[int, int]:
+    """Parse 'K/N' shard argument."""
+    parts = value.split("/")
+    if len(parts) != 2:  # noqa: PLR2004
+        msg = f"--shard must be K/N (e.g. 1/3), got: {value}"
+        raise ValueError(msg)
+    k, n = int(parts[0]), int(parts[1])
+    if not (1 <= k <= n):
+        msg = f"--shard K/N requires 1 <= K <= N, got: {k}/{n}"
+        raise ValueError(msg)
+    return k, n
+
+
 def main() -> None:
-    parser = ArgumentParser(description="Semantic analysis of prompt-code pairs")
+    parser = ArgumentParser(description="Semantic analysis of prompt-code pairs", formatter_class=RichHelpFormatter)
     parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
+    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"Ollama model (default: {DEFAULT_MODEL})")
+    parser.add_argument(
+        "--num-ctx",
+        type=int,
+        default=DEFAULT_NUM_CTX,
+        help=f"Context window size (default: [cyan]{DEFAULT_NUM_CTX}[/])",
+    )
+    parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
+    parser.add_argument("--merge", action="store_true", help="Only merges shard parquet files into final output")
     args = parser.parse_args()
+
+    if args.merge:
+        merge_shards()
+        return
+
+    shard = parse_shard(args.shard) if args.shard else None
 
     syntax_fname = "syntax_eval.parquet"
     cache_path = CACHE_DIR / syntax_fname
@@ -261,11 +359,11 @@ def main() -> None:
         df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)
         cout(f"Sampled {args.sample:,} rows (seed={args.seed})")
 
-    analyse_semantics(df)
+    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, shard=shard)
 
 
 if __name__ == "__main__":
     from utils.cache import graceful_exit
 
-    with graceful_exit("semantic analysis stopped", cache_path=CACHE_DIR / "semantic_eval.parquet"):
+    with graceful_exit("semantic analysis stopped"):
         main()

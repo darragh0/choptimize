@@ -7,12 +7,12 @@ from __future__ import annotations
 import json
 import os
 import threading
-import time
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from pathlib import Path
 from random import uniform
+from time import sleep
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 import pandas as pd
@@ -44,11 +44,12 @@ JSON_SCHEMA: Final[dict] = {
     "required": sorted(get_args(Dim.__value__)),
     "additionalProperties": False,
 }
+
 _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
 
 
 def _load_system_prompt() -> str:
-    """Load grading rubric system prompt from file."""
+    """Try load grading rubric system prompt from file."""
     try:
         return _SYSPROMPT_PATH.read_text()
     except FileNotFoundError:
@@ -118,7 +119,7 @@ def check_ollama(model: str) -> Client:
         cerr("Ollama not running -- start it with [cyan]ollama serve[/]", exit_code=1)
         raise RuntimeError("unreachable") from e
 
-    has_model = any(False if m.model is None else m.model.startswith(model) for m in available)
+    has_model = any(m.model and m.model.startswith(model) for m in available)
     if not has_model:
         cerr(f"model [cyan]{model}[/] not found -- pull it with [cyan]ollama pull {model}[/]", exit_code=1)
 
@@ -182,7 +183,7 @@ def process_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) ->
             last_err = e
             delay = min(60, 2 * 2**attempt) * uniform(0.75, 1.25)  # noqa: S311
             cerr(f"row {row['id']} retry {attempt + 1}/{MAX_SINGLE_RETRY}: {type(e).__name__}: {e}")
-            time.sleep(delay)
+            sleep(delay)
     else:
         cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries (last: {last_err})")
         return None
@@ -239,6 +240,50 @@ def _shard_paths(shard_id: int, shard_total: int) -> tuple[Path, Path]:
     )
 
 
+def _score_rows(
+    client: Client,
+    remaining: list[SyntaxEvalRow],
+    done: list[SemanticEvalRow],
+    checkpoint_path: Path,
+    model: str,
+    num_ctx: int,
+    parallel: int,
+) -> int:
+    """Score remaining rows, appending to done in-place. Returns skipped count."""
+    skipped = 0
+    write_lock = threading.Lock()
+
+    total = len(remaining) + len(done)
+    if parallel <= 1:
+        with checkpoint_writer(checkpoint_path) as write:
+            for _, row in tracked(remaining, "Scoring semantics", total=total, completed=len(done)):
+                result = process_row(client, row, model, num_ctx)
+                if result is None:
+                    skipped += 1
+                    continue
+                done.append(result)
+                write(result)
+    else:
+        cout(f"Running {parallel} parallel workers")
+        with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
+            futures = {pool.submit(process_row, client, row, model, num_ctx): row for row in remaining}
+            for future in tracked(
+                as_completed(futures),
+                "Scoring semantics",
+                total=total,
+                completed=len(done),
+            ):
+                result = future.result()
+                if result is None:
+                    skipped += 1
+                    continue
+                with write_lock:
+                    done.append(result)
+                    write(result)
+
+    return skipped
+
+
 def analyse_semantics(
     df: pd.DataFrame,
     model: str,
@@ -268,35 +313,7 @@ def analyse_semantics(
         done_ids = {r["id"] for r in done}
         remaining = [r for r in all_rows if r["id"] not in done_ids]
 
-        skipped = 0
-        write_lock = threading.Lock()
-
-        if parallel <= 1:
-            with checkpoint_writer(checkpoint_path) as write:
-                for _, row in tracked(remaining, "Scoring semantics", total=len(all_rows), completed=len(done)):
-                    result = process_row(client, row, model, num_ctx)
-                    if result is None:
-                        skipped += 1
-                        continue
-                    done.append(result)
-                    write(result)
-        else:
-            cout(f"Running {parallel} parallel workers")
-            with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
-                futures = {pool.submit(process_row, client, row, model, num_ctx): row for row in remaining}
-                for future in tracked(
-                    as_completed(futures),
-                    "Scoring semantics",
-                    total=len(all_rows),
-                    completed=len(done),
-                ):
-                    result = future.result()
-                    if result is None:
-                        skipped += 1
-                        continue
-                    with write_lock:
-                        done.append(result)
-                        write(result)
+        skipped = _score_rows(client, remaining, done, checkpoint_path, model, num_ctx, parallel)
 
         if skipped:
             cerr(f"{skipped}/{skipped + len(done)} rows failed and were skipped — checkpoint kept, parquet NOT cached")
@@ -398,8 +415,11 @@ def main() -> None:
 
     syntax_fname = "syntax_eval.parquet"
     cache_path = CACHE_DIR / syntax_fname
-    is_dev = os.getenv("CHOP__DEV")
-    if not cache_path.exists() and is_dev is not None:
+
+    is_dev = os.getenv("CHOP__DEV") is not None
+    has_cache = cache_path.exists() or is_dev
+
+    if not has_cache:
         cerr(f"run [cyan]scripts/syntax.py[/] first -- missing [cyan]{syntax_fname}[/]", exit_code=1)
 
     df = (

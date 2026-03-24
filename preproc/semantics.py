@@ -15,8 +15,8 @@ from pathlib import Path
 from random import uniform
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
+import pandas as pd
 from ollama import Client
-from pandas import DataFrame, concat, read_parquet
 from rich_argparse import RichHelpFormatter
 from utils.cache import CACHE_DIR
 from utils.console import cerr, cout
@@ -220,7 +220,7 @@ def checkpoint_writer(path: Path) -> Generator[Callable[[SemanticEvalRow], None]
         yield write
 
 
-def show_oview(df: DataFrame) -> None:
+def show_oview(df: pd.DataFrame) -> None:
     cout("Semantic Analysis Summary:")
 
     dims = [*PromptSemEval.__annotations__, *CodeSemEval.__annotations__]
@@ -240,8 +240,12 @@ def _shard_paths(shard_id: int, shard_total: int) -> tuple[Path, Path]:
 
 
 def analyse_semantics(
-    df: DataFrame, model: str, num_ctx: int, shard: tuple[int, int] | None = None, parallel: int = 1,
-) -> DataFrame:
+    df: pd.DataFrame,
+    model: str,
+    num_ctx: int,
+    shard: tuple[int, int] | None = None,
+    parallel: int = 1,
+) -> pd.DataFrame:
     """Run LLM-as-a-judge semantic analysis on each row."""
 
     if shard:
@@ -251,7 +255,7 @@ def analyse_semantics(
         cache_path = CACHE_DIR / "semantic_eval.parquet"
         checkpoint_path = CACHE_DIR / "semantic_eval.checkpoint.jsonl"
 
-    def compute() -> tuple[DataFrame, int]:
+    def compute() -> tuple[pd.DataFrame, int]:
         client = check_ollama(model)
         all_rows = cast("list[SyntaxEvalRow]", df.to_dict("records"))
 
@@ -281,7 +285,10 @@ def analyse_semantics(
             with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
                 futures = {pool.submit(process_row, client, row, model, num_ctx): row for row in remaining}
                 for future in tracked(
-                    as_completed(futures), "Scoring semantics", total=len(all_rows), completed=len(done),
+                    as_completed(futures),
+                    "Scoring semantics",
+                    total=len(all_rows),
+                    completed=len(done),
                 ):
                     result = future.result()
                     if result is None:
@@ -299,10 +306,10 @@ def analyse_semantics(
         if skipped == 0:
             checkpoint_path.unlink(missing_ok=True)
 
-        return DataFrame(done), skipped
+        return pd.DataFrame(done), skipped
 
     if cache_path.exists():
-        result = read_parquet(cache_path)
+        result = pd.read_parquet(cache_path)
     else:
         result, skipped = compute()
         if skipped == 0:
@@ -326,13 +333,13 @@ def merge_shards() -> None:
         cerr("no shard files found in [cyan]data/[/]", exit_code=1)
 
     cout(f"Merging {len(shard_files)} shard files:")
-    dfs: list[DataFrame] = []
+    dfs: list[pd.DataFrame] = []
     for f in shard_files:
-        df = read_parquet(f)
+        df = pd.read_parquet(f)
         cout(f"  {f.name}: {len(df):,} rows")
         dfs.append(df)
 
-    merged = concat(dfs, ignore_index=True).sort_values("id").reset_index(drop=True)
+    merged = pd.concat(dfs, ignore_index=True).sort_values("id").reset_index(drop=True)
     dup_ids = merged[merged["id"].duplicated(keep=False)]
     if not dup_ids.empty:
         cerr(f"WARNING: {len(dup_ids)} duplicate IDs found — check shard overlap")
@@ -367,17 +374,22 @@ def main() -> None:
     parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"Ollama model (default: {DEFAULT_MODEL})")
+    parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
+    parser.add_argument("--merge", action="store_true", help="Merges shard parquet files into final output and exit")
     parser.add_argument(
         "--num-ctx",
         type=int,
         default=DEFAULT_NUM_CTX,
         help=f"Context window size (default: [cyan]{DEFAULT_NUM_CTX}[/])",
     )
-    parser.add_argument("--parallel", type=int, default=DEFAULT_PARALLEL, help=f"Concurrent workers (default: {DEFAULT_PARALLEL})")
-    parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
-    parser.add_argument("--merge", action="store_true", help="Only merges shard parquet files into final output")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=DEFAULT_PARALLEL,
+        help=f"Concurrent workers (default: {DEFAULT_PARALLEL})",
+    )
 
+    args = parser.parse_args()
     if args.merge:
         merge_shards()
         return
@@ -386,10 +398,15 @@ def main() -> None:
 
     syntax_fname = "syntax_eval.parquet"
     cache_path = CACHE_DIR / syntax_fname
-    if not cache_path.exists():
+    is_dev = os.getenv("CHOP__DEV")
+    if not cache_path.exists() and is_dev is not None:
         cerr(f"run [cyan]scripts/syntax.py[/] first -- missing [cyan]{syntax_fname}[/]", exit_code=1)
 
-    df = read_parquet(cache_path)
+    df = (
+        pd.read_parquet("hf://datasets/darragh0/prompt2code-static-analysis/syntax_eval.parquet")
+        if is_dev
+        else pd.read_parquet(cache_path)
+    )
 
     if args.sample and args.sample < len(df):
         df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run the full preprocessing pipeline: download -> filter -> syntax -> semantics."""
+"""Run full preprocessing pipeline: download -> filter -> static (syntax, then semantics)."""
 
 from __future__ import annotations
 

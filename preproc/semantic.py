@@ -34,9 +34,8 @@ type Dim = Literal["clarity", "specificity", "completeness", "correctness", "rob
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL: Final = "gemma3:27b"
-DEFAULT_HOST: Final = "http://localhost:11434"
+DEFAULT_HOST: Final = "http://localhost:8000"
 MAX_RETRIES: Final[Uint] = 3
-DEFAULT_NUM_CTX: Final[Uint] = 8192
 DEFAULT_PARALLEL: Final[Uint] = 1
 
 JSON_SCHEMA: Final[dict] = {
@@ -46,7 +45,7 @@ JSON_SCHEMA: Final[dict] = {
     "additionalProperties": False,
 }
 
-_SYSPROMPT_PATH: Final = Path(__file__).parent / "semantics-prompt.xml"
+_SYSPROMPT_PATH: Final = Path(__file__).parent / "semantic.py.prompt.xml"
 
 
 def _load_system_prompt() -> str:
@@ -85,7 +84,7 @@ def build_syntax_summary(row: SyntaxEvalRow) -> str:
     )
 
 
-def score_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> dict:
+def score_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> dict:
     """Call LLM & extract JSON scores."""
 
     meow = (
@@ -108,8 +107,6 @@ def score_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
             "json_schema": {"name": "eval", "strict": True, "schema": JSON_SCHEMA},
         },
         max_tokens=512,
-        # Ollama-specific options (ignored by vLLM)
-        extra_body={"options": {"num_ctx": num_ctx, "flash_attention": True, "num_batch": 1024}},
     )
 
     txt = resp.choices[0].message.content
@@ -123,13 +120,13 @@ def score_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
     return js
 
 
-def process_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> SemanticEvalRow | None:
+def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalRow | None:
     """Evaluate single row on all prompt + code dimensions."""
 
     last_err: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            raw = score_row(client, row, model, num_ctx)
+            raw = score_row(client, row, model)
             break
         except BadRequestError as e:
             cerr(f"skipping row {row['id']} — non-retryable: {e.message}")
@@ -202,7 +199,6 @@ def _score_rows(
     done: list[SemanticEvalRow],
     checkpoint_path: Path,
     model: str,
-    num_ctx: int,
     parallel: int,
 ) -> int:
     """Score remaining rows, appending to done in-place. Returns skipped count."""
@@ -213,7 +209,7 @@ def _score_rows(
     if parallel <= 1:
         with checkpoint_writer(checkpoint_path) as write:
             for _, row in tracked(remaining, "Scoring semantics", total=total, completed=len(done)):
-                result = process_row(client, row, model, num_ctx)
+                result = process_row(client, row, model)
                 if result is None:
                     skipped += 1
                     continue
@@ -222,8 +218,8 @@ def _score_rows(
     else:
         cout(f"Running {parallel} parallel workers")
         with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
-            futures = {pool.submit(process_row, client, row, model, num_ctx): row for row in remaining}
-            for future in tracked(
+            futures = {pool.submit(process_row, client, row, model): row for row in remaining}
+            for _, future in tracked(
                 as_completed(futures),
                 "Scoring semantics",
                 total=total,
@@ -243,7 +239,6 @@ def _score_rows(
 def analyse_semantics(
     df: pd.DataFrame,
     model: str,
-    num_ctx: int,
     host: str = DEFAULT_HOST,
     shard: tuple[int, int] | None = None,
     parallel: int = 1,
@@ -270,7 +265,7 @@ def analyse_semantics(
         done_ids = {r["id"] for r in done}
         remaining = [r for r in all_rows if r["id"] not in done_ids]
 
-        skipped = _score_rows(client, remaining, done, checkpoint_path, model, num_ctx, parallel)
+        skipped = _score_rows(client, remaining, done, checkpoint_path, model, parallel)
 
         if skipped:
             cerr(f"{skipped}/{skipped + len(done)} rows failed and were skipped — checkpoint kept, parquet NOT cached")
@@ -357,12 +352,6 @@ def main() -> None:
     parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
     parser.add_argument("--merge", action="store_true", help="Merges shard parquet files into final output and exit")
     parser.add_argument(
-        "--num-ctx",
-        type=int,
-        default=DEFAULT_NUM_CTX,
-        help=f"Context window size (default: [cyan]{DEFAULT_NUM_CTX}[/])",
-    )
-    parser.add_argument(
         "--parallel",
         type=int,
         default=DEFAULT_PARALLEL,
@@ -395,7 +384,7 @@ def main() -> None:
         df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)
         cout(f"Sampled {args.sample:,} rows (seed={args.seed})")
 
-    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, host=args.host, shard=shard, parallel=args.parallel)
+    analyse_semantics(df, model=args.model, host=args.host, shard=shard, parallel=args.parallel)
 
 
 if __name__ == "__main__":

@@ -25,27 +25,22 @@ vllm serve google/gemma-3-27b-it \
 Run in order. Each script caches its output to `data/` and skips if already cached.
 
 ```sh
-uv run preproc/download.py          # download CodeChat-V2.0
-uv run preproc/filter.py            # filter to English + Python
-uv run preproc/syntax.py            # ruff & radon static analysis
-uv run preproc/semantic.py \        # LLM-as-a-judge evaluation
-  --host http://localhost:8000 \
-  --model google/gemma-3-27b-it \
-  --parallel 24
+uv run preproc/download.py                  # download CodeChat-V2.0
+uv run preproc/filter.py                    # filter to English + Python
+uv run preproc/syntax.py                    # ruff & radon static analysis
+uv run preproc/semantic.py --parallel 24    # LLM-as-a-judge evaluation
 ```
 
-### Distributed (multi-VM)
+### Distributed Run (multi-VM)
 
-Shard across N VMs — each processes 1/N of the rows independently:
+Shard across N VMs — each processes 1/N of the rows independently. E.g., 2:
 
 ```sh
 # VM 1
-uv run preproc/semantics.py --shard 1/4 --parallel 24 --host http://localhost:8000 --model google/gemma-3-27b-it
+uv run preproc/semantics.py --shard 2/2 --parallel 24 --host http://localhost:8000 --model google/gemma-3-27b-it
 
 # VM 2
-uv run preproc/semantics.py --shard 2/4 --parallel 24 --host http://localhost:8000 --model google/gemma-3-27b-it
-
-# ... VM 3, VM 4
+uv run preproc/semantics.py --shard 2/2 --parallel 24 --host http://localhost:8000 --model google/gemma-3-27b-it
 
 # After all shards finish, merge on any machine with all shard files:
 uv run preproc/semantics.py --merge
@@ -55,7 +50,7 @@ uv run preproc/semantics.py --merge
 
 | Flag         | Default                 | Description                          |
 | ------------ | ----------------------- | ------------------------------------ |
-| `--host`     | `http://localhost:8000` | LLM server URL                       |
+| `--host`     | `http://localhost:8000` | vLLM server URL                      |
 | `--model`    | `gemma3:27b`            | Model name (must match served model) |
 | `--parallel` | `1`                     | Concurrent requests to LLM server    |
 | `--shard`    | none                    | Shard spec `K/N` (e.g. `1/4`)        |

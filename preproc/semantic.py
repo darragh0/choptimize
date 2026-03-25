@@ -33,8 +33,8 @@ if TYPE_CHECKING:
 type Dim = Literal["clarity", "specificity", "completeness", "correctness", "robustness", "readability", "efficiency"]
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
-DEFAULT_MODEL: Final = "gemma3:27b"
-DEFAULT_HOST: Final = "http://localhost:8000"
+DEFAULT_MODEL_VLLM: Final = "google/gemma-3-27b-it"
+DEFAULT_HOST_VLLM: Final = "http://localhost:8000"
 MAX_RETRIES: Final[Uint] = 3
 DEFAULT_PARALLEL: Final[Uint] = 1
 
@@ -129,7 +129,7 @@ def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalR
             raw = score_row(client, row, model)
             break
         except BadRequestError as e:
-            cerr(f"skipping row {row['id']} — non-retryable: {e.message}")
+            cerr(f"skipping row {row['id']}: non-retryable: {e.message}")
             return None
         except Exception as e:  # noqa: BLE001
             last_err = e
@@ -137,7 +137,7 @@ def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalR
             cerr(f"row {row['id']} retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
             sleep(delay)
     else:
-        cerr(f"skipping row {row['id']} — failed after {MAX_RETRIES} retries (last: {last_err})")
+        cerr(f"skipping row {row['id']}: failed after {MAX_RETRIES} retries (last: {last_err})")
         return None
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})
@@ -239,7 +239,7 @@ def _score_rows(
 def analyse_semantics(
     df: pd.DataFrame,
     model: str,
-    host: str = DEFAULT_HOST,
+    host: str = DEFAULT_HOST_VLLM,
     shard: tuple[int, int] | None = None,
     parallel: int = 1,
 ) -> pd.DataFrame:
@@ -342,12 +342,14 @@ def main() -> None:
     parser = ArgumentParser(description="Semantic analysis of prompt-code pairs", formatter_class=RichHelpFormatter)
     parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"Model name (default: {DEFAULT_MODEL})")
+    parser.add_argument(
+        "--model", type=str, default=DEFAULT_MODEL_VLLM, help=f"Model name (default: {DEFAULT_MODEL_VLLM})"
+    )
     parser.add_argument(
         "--host",
         type=str,
-        default=DEFAULT_HOST,
-        help=f"LLM server base URL -- Ollama or vLLM (default: {DEFAULT_HOST})",
+        default=DEFAULT_HOST_VLLM,
+        help=f"LLM server base URL -- Ollama or vLLM (default: {DEFAULT_HOST_VLLM})",
     )
     parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
     parser.add_argument("--merge", action="store_true", help="Merges shard parquet files into final output and exit")

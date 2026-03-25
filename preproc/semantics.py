@@ -16,7 +16,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 import pandas as pd
-from ollama import Client
+from openai import OpenAI
 from rich_argparse import RichHelpFormatter
 from utils.cache import CACHE_DIR
 from utils.console import cerr, cout
@@ -34,6 +34,7 @@ type Dim = Literal["clarity", "specificity", "completeness", "correctness", "rob
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL: Final = "gemma3:27b"
+DEFAULT_HOST: Final = "http://localhost:11434"
 MAX_SINGLE_RETRY: Final[Uint] = 10
 DEFAULT_NUM_CTX: Final[Uint] = 8192
 DEFAULT_PARALLEL: Final[Uint] = 1
@@ -110,19 +111,14 @@ def get_llm_json(txt: str | None) -> dict:
     return js
 
 
-def check_ollama(model: str) -> Client:
-    """Verify Ollama running & model available."""
+def setup_client(host: str) -> OpenAI:
+    """Connect to LLM server (Ollama or vLLM) and verify it is reachable."""
     try:
-        client = Client()
-        available = client.list().models
+        client = OpenAI(base_url=f"{host}/v1", api_key="none")
+        client.models.list()
     except Exception as e:
-        cerr("Ollama not running -- start it with [cyan]ollama serve[/]", exit_code=1)
+        cerr(f"Cannot connect to LLM server at [cyan]{host}[/] -- is it running?", exit_code=1)
         raise RuntimeError("unreachable") from e
-
-    has_model = any(m.model and m.model.startswith(model) for m in available)
-    if not has_model:
-        cerr(f"model [cyan]{model}[/] not found -- pull it with [cyan]ollama pull {model}[/]", exit_code=1)
-
     return client
 
 
@@ -137,7 +133,7 @@ def build_syntax_summary(row: SyntaxEvalRow) -> str:
     )
 
 
-def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> dict:
+def score_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> dict:
     """Call LLM & extract JSON scores."""
 
     meow = (
@@ -149,18 +145,22 @@ def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
         f"<SYNTAX_REPORT>{build_syntax_summary(row)}</SYNTAX_REPORT>"
     )
 
-    resp = client.chat(
+    resp = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": meow},
         ],
-        format=JSON_SCHEMA,
-        options={"num_ctx": num_ctx, "flash_attention": True, "num_batch": 1024},
-        keep_alive="30m",
+        response_format={
+            "type": "json_schema",
+            "json_schema": {"name": "eval", "strict": True, "schema": JSON_SCHEMA},
+        },
+        max_tokens=512,
+        # Ollama-specific options (ignored by vLLM)
+        extra_body={"options": {"num_ctx": num_ctx, "flash_attention": True, "num_batch": 1024}},
     )
 
-    txt = resp.message.content
+    txt = resp.choices[0].message.content
     if txt is None:
         msg = "LLM returned None"
         raise ValueError(msg)
@@ -171,7 +171,7 @@ def score_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> d
     return js
 
 
-def process_row(client: Client, row: SyntaxEvalRow, model: str, num_ctx: int) -> SemanticEvalRow | None:
+def process_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) -> SemanticEvalRow | None:
     """Evaluate single row on all prompt + code dimensions."""
 
     last_err: Exception | None = None
@@ -211,6 +211,7 @@ def load_checkpoint(path: Path) -> list[SemanticEvalRow]:
 @contextmanager
 def checkpoint_writer(path: Path) -> Generator[Callable[[SemanticEvalRow], None]]:
     """Yield function to append scored rows to checkpoint file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as f:
 
         def write(row: SemanticEvalRow) -> None:
@@ -241,7 +242,7 @@ def _shard_paths(shard_id: int, shard_total: int) -> tuple[Path, Path]:
 
 
 def _score_rows(
-    client: Client,
+    client: OpenAI,
     remaining: list[SyntaxEvalRow],
     done: list[SemanticEvalRow],
     checkpoint_path: Path,
@@ -288,6 +289,7 @@ def analyse_semantics(
     df: pd.DataFrame,
     model: str,
     num_ctx: int,
+    host: str = DEFAULT_HOST,
     shard: tuple[int, int] | None = None,
     parallel: int = 1,
 ) -> pd.DataFrame:
@@ -301,7 +303,7 @@ def analyse_semantics(
         checkpoint_path = CACHE_DIR / "semantic_eval.checkpoint.jsonl"
 
     def compute() -> tuple[pd.DataFrame, int]:
-        client = check_ollama(model)
+        client = setup_client(host)
         all_rows = cast("list[SyntaxEvalRow]", df.to_dict("records"))
 
         if shard:
@@ -390,7 +392,13 @@ def main() -> None:
     parser = ArgumentParser(description="Semantic analysis of prompt-code pairs", formatter_class=RichHelpFormatter)
     parser.add_argument("--sample", type=int, default=None, help="Random sample size (default: all rows)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for sampling")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"Ollama model (default: {DEFAULT_MODEL})")
+    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"Model name (default: {DEFAULT_MODEL})")
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=DEFAULT_HOST,
+        help=f"LLM server base URL -- Ollama or vLLM (default: {DEFAULT_HOST})",
+    )
     parser.add_argument("--shard", type=str, default=None, help="Shard specification K/N (e.g. [cyan]1/3[/])")
     parser.add_argument("--merge", action="store_true", help="Merges shard parquet files into final output and exit")
     parser.add_argument(
@@ -432,7 +440,7 @@ def main() -> None:
         df = df.sample(n=args.sample, random_state=args.seed).reset_index(drop=True)
         cout(f"Sampled {args.sample:,} rows (seed={args.seed})")
 
-    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, shard=shard, parallel=args.parallel)
+    analyse_semantics(df, model=args.model, num_ctx=args.num_ctx, host=args.host, shard=shard, parallel=args.parallel)
 
 
 if __name__ == "__main__":

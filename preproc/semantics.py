@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Semantic analysis of prompt-code pairs via Ollama LLM."""
+"""Semantic analysis of prompt-code pairs via OpenAI-compatible LLM server."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 import pandas as pd
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from rich_argparse import RichHelpFormatter
 from utils.cache import CACHE_DIR
 from utils.console import cerr, cout
@@ -35,7 +35,7 @@ type Dim = Literal["clarity", "specificity", "completeness", "correctness", "rob
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL: Final = "gemma3:27b"
 DEFAULT_HOST: Final = "http://localhost:11434"
-MAX_SINGLE_RETRY: Final[Uint] = 10
+MAX_RETRIES: Final[Uint] = 3
 DEFAULT_NUM_CTX: Final[Uint] = 8192
 DEFAULT_PARALLEL: Final[Uint] = 1
 
@@ -61,54 +61,6 @@ def _load_system_prompt() -> str:
 
 
 SYSTEM_PROMPT: Final = _load_system_prompt()
-
-
-def json_find_and_loads(txt: str) -> dict:
-    """Find, extract & load JSON from str."""
-
-    snip = f"{txt[: -(len(txt) // 2)]!r}"
-    end = txt.rfind("}")
-    if end == -1:
-        msg = f"[JSON] No close brace (`}}`): ... {snip}"
-        raise ValueError(msg)
-
-    start = txt.rfind("{", 0, end)
-    if start == -1:
-        msg = f"[JSON] No open brace (`{{`): ... {snip}"
-        raise ValueError(msg)
-
-    try:
-        js = json.loads(txt[start : end + 1])
-    except json.JSONDecodeError as e:
-        msg = f"Invalid JSON: {snip}"
-        raise ValueError(msg) from e
-
-    return js
-
-
-def check_json_fmt(js: dict) -> None:
-    """Check JSON vs. required format (also clamp int overflows in-place)."""
-    missing_keys = set(DIMS) - js.keys()
-    if missing_keys:
-        msg = f"Missing keys: {sorted(missing_keys)!r}"
-        raise ValueError(msg)
-
-    for k, v in js.items():
-        if not isinstance(v, (int, float)):
-            msg = f"Non-numeric value for key {k!r}: {v!r}"
-            raise TypeError(msg)
-        js[k] = max(1, min(5, int(v)))
-
-
-def get_llm_json(txt: str | None) -> dict:
-    """Extract last JSON object from CoT (Chain of Thought) response."""
-    if txt is None:
-        msg = "LLM returned None"
-        raise ValueError(msg)
-
-    js = json_find_and_loads(txt)
-    check_json_fmt(js)
-    return js
 
 
 def setup_client(host: str) -> OpenAI:
@@ -175,17 +127,20 @@ def process_row(client: OpenAI, row: SyntaxEvalRow, model: str, num_ctx: int) ->
     """Evaluate single row on all prompt + code dimensions."""
 
     last_err: Exception | None = None
-    for attempt in range(MAX_SINGLE_RETRY):
+    for attempt in range(MAX_RETRIES):
         try:
             raw = score_row(client, row, model, num_ctx)
             break
+        except BadRequestError as e:
+            cerr(f"skipping row {row['id']} — non-retryable: {e.message}")
+            return None
         except Exception as e:  # noqa: BLE001
             last_err = e
-            delay = min(60, 2 * 2**attempt) * uniform(0.75, 1.25)  # noqa: S311
-            cerr(f"row {row['id']} retry {attempt + 1}/{MAX_SINGLE_RETRY}: {type(e).__name__}: {e}")
+            delay = min(30, 2 ** (attempt + 1)) * uniform(0.75, 1.25)  # noqa: S311
+            cerr(f"row {row['id']} retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
             sleep(delay)
     else:
-        cerr(f"skipping row {row['id']} — failed after {MAX_SINGLE_RETRY} retries (last: {last_err})")
+        cerr(f"skipping row {row['id']} — failed after {MAX_RETRIES} retries (last: {last_err})")
         return None
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})

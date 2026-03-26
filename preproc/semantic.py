@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 
 type Dim = Literal["clarity", "specificity", "completeness", "correctness", "robustness", "readability", "efficiency"]
+type SkipKind = Literal["hard", "soft"]
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL_VLLM: Final = "google/gemma-3-27b-it"
@@ -120,7 +121,7 @@ def score_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> dict:
     return js
 
 
-def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalRow | None:
+def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalRow | SkipKind:
     """Evaluate single row on all prompt + code dimensions."""
 
     last_err: Exception | None = None
@@ -128,17 +129,17 @@ def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalR
         try:
             raw = score_row(client, row, model)
             break
-        except BadRequestError as e:
-            cerr(f"skipping row {row['id']}: non-retryable: {e.message}")
-            return None
+        except BadRequestError:
+            cerr(f"skip {row['id'][:8]}… — input too long")
+            return "hard"
         except Exception as e:  # noqa: BLE001
             last_err = e
             delay = min(30, 2 ** (attempt + 1)) * uniform(0.75, 1.25)  # noqa: S311
-            cerr(f"row {row['id']} retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
+            cerr(f"row {row['id'][:8]}… retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
             sleep(delay)
     else:
-        cerr(f"skipping row {row['id']}: failed after {MAX_RETRIES} retries (last: {last_err})")
-        return None
+        cerr(f"skip {row['id'][:8]}… — failed after {MAX_RETRIES} retries (last: {last_err})")
+        return "soft"
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})
 
@@ -200,21 +201,26 @@ def _score_rows(
     checkpoint_path: Path,
     model: str,
     parallel: int,
-) -> int:
-    """Score remaining rows, appending to done in-place. Returns skipped count."""
-    skipped = 0
+) -> tuple[int, int]:
+    """Score remaining rows, appending to done in-place. Returns (hard_skipped, soft_skipped)."""
+    hard = soft = 0
     write_lock = threading.Lock()
+
+    def _handle(result: SemanticEvalRow | SkipKind) -> None:
+        nonlocal hard, soft
+        if result == "hard":
+            hard += 1
+        elif result == "soft":
+            soft += 1
+        else:
+            done.append(result)
+            write(result)
 
     total = len(remaining) + len(done)
     if parallel <= 1:
         with checkpoint_writer(checkpoint_path) as write:
             for _, row in tracked(remaining, "Scoring semantics", total=total, completed=len(done)):
-                result = process_row(client, row, model)
-                if result is None:
-                    skipped += 1
-                    continue
-                done.append(result)
-                write(result)
+                _handle(process_row(client, row, model))
     else:
         cout(f"Running {parallel} parallel workers")
         with checkpoint_writer(checkpoint_path) as write, ThreadPoolExecutor(max_workers=parallel) as pool:
@@ -225,15 +231,10 @@ def _score_rows(
                 total=total,
                 completed=len(done),
             ):
-                result = future.result()
-                if result is None:
-                    skipped += 1
-                    continue
                 with write_lock:
-                    done.append(result)
-                    write(result)
+                    _handle(future.result())
 
-    return skipped
+    return hard, soft
 
 
 def analyse_semantics(
@@ -265,23 +266,25 @@ def analyse_semantics(
         done_ids = {r["id"] for r in done}
         remaining = [r for r in all_rows if r["id"] not in done_ids]
 
-        skipped = _score_rows(client, remaining, done, checkpoint_path, model, parallel)
+        hard, soft = _score_rows(client, remaining, done, checkpoint_path, model, parallel)
 
-        if skipped:
-            cerr(f"{skipped}/{skipped + len(done)} rows failed and were skipped — checkpoint kept, parquet NOT cached")
+        if hard:
+            cerr(f"{hard} rows skipped (input too long) — excluded from output")
+        if soft:
+            cerr(f"{soft} rows failed transiently — checkpoint kept, parquet NOT cached")
 
         done.sort(key=lambda r: r["id"])
 
-        if skipped == 0:
+        if soft == 0:
             checkpoint_path.unlink(missing_ok=True)
 
-        return pd.DataFrame(done), skipped
+        return pd.DataFrame(done), soft
 
     if cache_path.exists():
         result = pd.read_parquet(cache_path)
     else:
-        result, skipped = compute()
-        if skipped == 0:
+        result, soft_skipped = compute()
+        if soft_skipped == 0:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             result.to_parquet(cache_path)
             cout(f"Cached to [cyan]{cache_path}[/]")

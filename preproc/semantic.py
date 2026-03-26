@@ -19,7 +19,7 @@ import pandas as pd
 from openai import BadRequestError, OpenAI
 from rich_argparse import RichHelpFormatter
 from utils.cache import CACHE_DIR
-from utils.console import cerr, cout
+from utils.console import cerr, cout, cwarn
 from utils.display import show_df_overview
 from utils.progress import tracked
 from utils.types import CodeSemEval, PromptSemEval, Uint
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 
 type Dim = Literal["clarity", "specificity", "completeness", "correctness", "robustness", "readability", "efficiency"]
+
 
 DIMS: Final[set[Dim]] = set(get_args(Dim.__value__))
 DEFAULT_MODEL_VLLM: Final = "google/gemma-3-27b-it"
@@ -49,7 +50,7 @@ _SYSPROMPT_PATH: Final = Path(__file__).parent / "semantic.py.prompt.xml"
 
 
 def _load_system_prompt() -> str:
-    """Try load grading rubric system prompt from file."""
+    """Try load system prompt (grading rubric) from file."""
     try:
         return _SYSPROMPT_PATH.read_text()
     except FileNotFoundError:
@@ -63,10 +64,11 @@ SYSTEM_PROMPT: Final = _load_system_prompt()
 
 
 def setup_client(host: str) -> OpenAI:
-    """Connect to LLM server (Ollama or vLLM) and verify it is reachable."""
+    """Connect to LLM server (Ollama/vLLM) & verify reachable."""
     try:
+        # Using OpenAI SDK as generic client
         client = OpenAI(base_url=f"{host}/v1", api_key="none")
-        client.models.list()
+        client.models.list()  # Health check
     except Exception as e:
         cerr(f"Cannot connect to LLM server at [cyan]{host}[/] -- is it running?", exit_code=1)
         raise RuntimeError("unreachable") from e
@@ -74,7 +76,7 @@ def setup_client(host: str) -> OpenAI:
 
 
 def build_syntax_summary(row: SyntaxEvalRow) -> str:
-    """Build human-readable syntax report from static analysis fields."""
+    """Build more readable syntax report from static analysis fields."""
     return (
         f"parseable={row['parseable']} | lines={row['lines']}"
         f" | ruff_errors={row['ruff_errors']} | ruff_warnings={row['ruff_warnings']}"
@@ -106,7 +108,7 @@ def score_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> dict:
             "type": "json_schema",
             "json_schema": {"name": "eval", "strict": True, "schema": JSON_SCHEMA},
         },
-        max_tokens=512,
+        max_tokens=512,  # Output always JSON so don't rlly matter
     )
 
     txt = resp.choices[0].message.content
@@ -129,22 +131,23 @@ def process_row(client: OpenAI, row: SyntaxEvalRow, model: str) -> SemanticEvalR
             raw = score_row(client, row, model)
             break
         except BadRequestError:
-            cerr(f"skip {row['id'][:8]}… — input too long")
+            cwarn(f"skip {row['id'][:8]}... -- input too long")
             return None
         except Exception as e:  # noqa: BLE001
             last_err = e
+            # Exponential backoff with jitter
             delay = min(30, 2 ** (attempt + 1)) * uniform(0.75, 1.25)  # noqa: S311
-            cerr(f"row {row['id'][:8]}… retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
+            cwarn(f"row {row['id'][:8]}... retry {attempt + 1}/{MAX_RETRIES}: {type(e).__name__}: {e}")
             sleep(delay)
     else:
-        cerr(f"skip {row['id'][:8]}… — failed after {MAX_RETRIES} retries (last: {last_err})")
+        cwarn(f"skip {row['id'][:8]}... -- failed after {MAX_RETRIES} retries (last: {last_err})")
         return None
 
     return cast("SemanticEvalRow", {**row, **{dim: raw[dim] for dim in DIMS}})
 
 
 def load_checkpoint(path: Path) -> list[SemanticEvalRow]:
-    """Load completed rows from JSONL checkpoint file."""
+    """Load completed rows from checkpoint file."""
     if not path.exists():
         return []
 
@@ -162,7 +165,7 @@ def load_checkpoint(path: Path) -> list[SemanticEvalRow]:
 
 @contextmanager
 def checkpoint_writer(path: Path) -> Generator[Callable[[SemanticEvalRow], None]]:
-    """Yield function to append scored rows to checkpoint file."""
+    """Yield fn to append scored rows to checkpoint file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as f:
 
@@ -268,7 +271,7 @@ def analyse_semantics(
         skipped = _score_rows(client, remaining, done, checkpoint_path, model, parallel)
 
         if skipped:
-            cerr(f"{skipped} rows skipped — excluded from output")
+            cwarn(f"{skipped} rows skipped -- excluded from output")
 
         done.sort(key=lambda r: r["id"])
         checkpoint_path.unlink(missing_ok=True)
@@ -308,7 +311,7 @@ def merge_shards() -> None:
     merged = pd.concat(dfs, ignore_index=True).sort_values("id").reset_index(drop=True)
     dup_ids = merged[merged["id"].duplicated(keep=False)]
     if not dup_ids.empty:
-        cerr(f"WARNING: {len(dup_ids)} duplicate IDs found — check shard overlap")
+        cwarn(f"{len(dup_ids)} duplicate IDs found -- check shard overlap")
 
     out_path = CACHE_DIR / "semantic_eval.parquet"
     merged.to_parquet(out_path)

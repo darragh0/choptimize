@@ -33,7 +33,7 @@ uv run preproc/semantic.py --parallel 24    # LLM-as-a-judge evaluation
 
 ### Distributed Run (multi-VM)
 
-Shard across N VMs — each processes 1/N of the rows independently. E.g., 2:
+Shard across N VMs: each processes 1/N of the rows independently. E.g., 2:
 
 ```sh
 # VM 1

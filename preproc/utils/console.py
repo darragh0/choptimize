@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from functools import partial
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 
 from rich.console import Console
@@ -56,3 +57,4 @@ class _ErrConsole(Console):
 
 cout = _Console()
 cerr = _ErrConsole(stderr=True)
+cwarn = partial(cerr.__call__, prefix="[bold yellow]warn:[/]")

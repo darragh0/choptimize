@@ -18,11 +18,11 @@ from typing import TYPE_CHECKING, cast
 import pandas as pd
 from radon.complexity import cc_visit
 from radon.metrics import mi_visit
-from utils.cache import CACHE_DIR, parquet_cache
-from utils.console import cerr, cout
-from utils.display import show_df_overview
-from utils.progress import tracked
-from utils.types import SyntaxEval, Uint
+from common.utils.cache import CACHE_DIR, parquet_cache
+from common.utils.console import cerr, cout
+from common.utils.display import show_df_overview
+from preproc.utils.progress import tracked
+from preproc.utils.types import SyntaxEval, Uint
 
 if TYPE_CHECKING:
     from preproc.utils.types import FilteredDSRow, SyntaxEvalRow

@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Final
 from pandas import read_parquet
 from scipy import stats
 
-from preproc.utils.cache import CACHE_DIR
-from preproc.utils.console import cerr
-from preproc.utils.display import pretty_path
+from common.utils.cache import CACHE_DIR
+from common.utils.console import cerr
+from common.utils.display import pretty_path
 
 if TYPE_CHECKING:
     from pandas import DataFrame

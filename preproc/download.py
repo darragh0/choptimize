@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING, Final
 
 from datasets import List, Value, load_dataset
 from utils.cache import CACHE_DIR
-from utils.console import cout
 from utils.display import pretty_path
+
+from common.utils.console import cout
 
 if TYPE_CHECKING:
     from datasets import Dataset

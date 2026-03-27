@@ -13,7 +13,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from .console import cerr
+from common.utils.console import cerr
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator

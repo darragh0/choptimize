@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from pandas import DataFrame, read_parquet
 
-from common.utils.display import pretty_path
-
 from .console import cerr, cout
+from .display import pretty_path
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -40,19 +41,27 @@ def _show_cache_stats(df: DataFrame, path: Path) -> None:
 def parquet_cache(
     path: Path,
     compute: Callable[[], DataFrame],
+    *,
+    log: bool = False,
 ) -> DataFrame:
     """Load DataFrame from parquet cache, or compute + save."""
 
     if path.exists():
         df = read_parquet(path)
-        cout("Loaded from cache:")
-        _show_cache_stats(df, path)
+        if log:
+            cout("Loaded from cache:")
+            _show_cache_stats(df, path)
         return df
 
     df = compute()
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path)
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".parquet")
+    os.close(tmp_fd)
+    tmp = Path(tmp_path)
+    df.to_parquet(tmp)
+    tmp.rename(path)
 
+    # Important to show each time
     cout("Cached:")
     _show_cache_stats(df, path)
 

@@ -17,10 +17,10 @@ from download import load_ds
 from fasttext import FastText
 from fasttext import load_model as load_fasttext_model
 from pandas import DataFrame
-from utils.cache import CACHE_DIR, parquet_cache
-from utils.console import cout
-from utils.display import show_df_overview
-from utils.progress import tracked
+from common.utils.cache import CACHE_DIR, parquet_cache
+from common.utils.console import cout
+from common.utils.display import show_df_overview
+from preproc.utils.progress import tracked
 
 if TYPE_CHECKING:
     from datasets import Dataset

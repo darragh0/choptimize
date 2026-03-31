@@ -1,28 +1,16 @@
-<div align="center">
-  <h2>Choptimize</h2>
-  <p>A CLI tool for analysing and optimizing coding prompts.</p>
-  <a href="./assets/img/choptimize.svg" target="_blank">
-    <img src="./assets/img/choptimize.svg" alt="Choptimize Logo (created with Canva)" width="350">
-  </a>
-</div>
-
-<br />
-
-<div align="center">
+## Choptimize
 
 [![License][license-img]][license-url]&nbsp;
 [![Python][py-img]][py-url]
 
-</div>
-
-CLI tool for analysing prompt quality in developer-LLM code conversations, using the [CodeChat-V2.0](https://huggingface.co/datasets/Suzhen/CodeChat-V2.0) dataset (587k conversations from [WildChat](https://huggingface.co/datasets/allenai/WildChat)).
+A multimodal tool for analysing and optimizing coding prompts, grounded in the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset.
 
 > [!IMPORTANT]
 > Requires Python 3.13+
 
 ## Background
 
-This tool was created as a research artefact from an investigation into the correlation between prompt quality and code quality in developer–LLM code conversations. It is grounded in the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset (~26K scored prompt–code pairs).
+This tool was created as a research artefact from an investigation into the correlation between prompt quality and code quality in developer–LLM code conversations, where we created and analysed the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset (~26K scored prompt–code pairs).
 
 The source code for the tool is in `app/`; the preprocessing pipeline that produced the dataset is in `preproc/`.
 

@@ -16,11 +16,11 @@ from common.utils.cache import CACHE_DIR, parquet_cache
 from common.utils.console import cout
 from common.utils.display import show_df_overview
 from datasets import Dataset
-from download import load_codechat_v2
 from fasttext import FastText
 from fasttext import load_model as load_fasttext_model
 from pandas import DataFrame
 
+from preproc.download import load_codechat_v2
 from preproc.utils.progress import tracked
 
 if TYPE_CHECKING:
@@ -65,7 +65,7 @@ def process_convo(row: DSRow, /) -> FilteredDSRow | None:
     """Extract first turn if it has English prompt + non-trivial code."""
 
     conversation = row["conversation"]
-    if not conversation or len(conversation[0]) < 2:  # noqa: PLR2004
+    if not conversation or len(conversation[0]) < 2:
         return None
 
     turn = conversation[0]

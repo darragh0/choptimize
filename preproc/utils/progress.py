@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from common.utils.console import cerr
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -12,8 +13,6 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-
-from common.utils.console import cerr
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator

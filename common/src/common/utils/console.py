@@ -32,7 +32,7 @@ class _RichConsolePrintKwargs(TypedDict, total=False):
     new_line_start: bool
 
 
-class _Console(Console):
+class CustomConsole(Console):
     def __call__(
         self,
         *objects: Any,  # noqa: ANN401
@@ -41,7 +41,7 @@ class _Console(Console):
         self.print(*objects, **kwargs)
 
 
-class _ErrConsole(Console):
+class CustomErrConsole(Console):
     def __call__(
         self,
         *objects: Any,  # noqa: ANN401
@@ -55,6 +55,6 @@ class _ErrConsole(Console):
             sys.exit(exit_code)
 
 
-cout = _Console()
-cerr = _ErrConsole(stderr=True)
+cout = CustomConsole()
+cerr = CustomErrConsole(stderr=True)
 cwarn = partial(cerr.__call__, prefix="[bold yellow]warn:[/]")

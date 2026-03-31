@@ -15,7 +15,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
 
-CACHE_DIR: Final = Path(__file__).parents[2] / "data"
+N_DIRS_DEEP: Final = 4
+CACHE_DIR: Final = Path(__file__).parents[N_DIRS_DEEP] / "data"
 
 
 @contextmanager

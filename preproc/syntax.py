@@ -16,11 +16,12 @@ from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, cast
 
 import pandas as pd
-from radon.complexity import cc_visit
-from radon.metrics import mi_visit
 from common.utils.cache import CACHE_DIR, parquet_cache
 from common.utils.console import cerr, cout
 from common.utils.display import show_df_overview
+from radon.complexity import cc_visit
+from radon.metrics import mi_visit
+
 from preproc.utils.progress import tracked
 from preproc.utils.types import SyntaxEval, Uint
 
@@ -211,7 +212,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    from utils.cache import graceful_exit
+    from common.utils.cache import graceful_exit
 
     with graceful_exit("syntax analysis stopped"):
         main()

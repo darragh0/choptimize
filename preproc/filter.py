@@ -12,14 +12,15 @@ from threading import Semaphore
 from typing import TYPE_CHECKING, Final, cast
 from urllib.request import urlretrieve
 
-from datasets import Dataset
-from download import load_ds
-from fasttext import FastText
-from fasttext import load_model as load_fasttext_model
-from pandas import DataFrame
 from common.utils.cache import CACHE_DIR, parquet_cache
 from common.utils.console import cout
 from common.utils.display import show_df_overview
+from datasets import Dataset
+from download import load_codechat_v2
+from fasttext import FastText
+from fasttext import load_model as load_fasttext_model
+from pandas import DataFrame
+
 from preproc.utils.progress import tracked
 
 if TYPE_CHECKING:
@@ -134,11 +135,11 @@ def filter_ds(ds: Dataset, /) -> DataFrame:
 
 
 def main() -> None:
-    filter_ds(load_ds(overview=False))
+    filter_ds(load_codechat_v2(overview=False))
 
 
 if __name__ == "__main__":
-    from utils.cache import graceful_exit
+    from common.utils.cache import graceful_exit
 
     with graceful_exit("filtering stopped"):
         main()

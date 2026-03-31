@@ -16,11 +16,12 @@ from time import sleep
 from typing import TYPE_CHECKING, Final, Literal, cast, get_args
 
 import pandas as pd
-from openai import BadRequestError, OpenAI
-from rich_argparse import RichHelpFormatter
 from common.utils.cache import CACHE_DIR
 from common.utils.console import cerr, cout, cwarn
 from common.utils.display import show_df_overview
+from openai import BadRequestError, OpenAI
+from rich_argparse import RichHelpFormatter
+
 from preproc.utils.progress import tracked
 from preproc.utils.types import CodeSemEval, PromptSemEval, Uint
 
@@ -390,7 +391,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    from utils.cache import graceful_exit
+    from common.utils.cache import graceful_exit
 
     with graceful_exit("semantic analysis stopped"):
         main()

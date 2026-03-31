@@ -1,85 +1,22 @@
 #!/usr/bin/env python3
 
-"""Load/Download dataset from huggingface."""
+"""Load/Download initial dataset from huggingface."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from functools import partial
+from typing import Final
 
-from datasets import List, Value, load_dataset
-from utils.cache import CACHE_DIR
-from utils.display import pretty_path
-
-from common.utils.console import cout
-
-if TYPE_CHECKING:
-    from datasets import Dataset
-
+from common.utils.dataset import load_ds
 
 DS_NAME: Final = "Suzhen/CodeChat-V2.0"
 DS_REVISION: Final = "09dacf311596f8214075878600dcb60e5bcd7eb4"  # 2025-09-20
-TARGET: Final = "train"
 
-
-def fmt_type(feat: List | Value | dict) -> str:
-    if isinstance(feat, Value):
-        return feat.dtype
-    if isinstance(feat, List):
-        return rf"list\[{fmt_type(feat.feature)}]"
-    return type(feat).__name__
-
-
-def inner_fields(feat: List | Value | dict) -> dict | None:
-    if isinstance(feat, List):
-        return inner_fields(feat.feature)
-    if isinstance(feat, dict):
-        return feat
-    return None
-
-
-def show_oview(ds: Dataset, ds_name: str) -> None:
-    """Show original dataset overview."""
-
-    location = pretty_path(CACHE_DIR / f"{ds_name}.parquet")
-
-    cout(f"[dim]Dataset[/]    {ds_name!r}")
-    cout(f"[dim]Location[/]   {location}")
-    cout(f"[dim]Rows[/]       {len(ds):,}")
-    cout("\n[dim]Features[/]")
-
-    maxlen = lambda s: len(max(s, key=len))  # noqa: E731
-    w = maxlen(ds.features)
-    zpad = len(str(len(ds.features)))
-
-    for i, (name, feat) in enumerate(ds.features.items()):
-        typ = fmt_type(feat)
-        cout(f"  {i:0{zpad}}  {name:<{w}}\t[cyan]{typ}[/]")
-
-        if inner := inner_fields(feat):
-            items = list(inner.items())
-            iw = max({w, maxlen(inner)}) - 4
-            for j, (sub_name, sub_feat) in enumerate(items):
-                pre = "└─" if j == len(items) - 1 else "├─"
-                styp = fmt_type(sub_feat)
-                cout(f"    {' ' * zpad}[dim]  {pre}[/] {sub_name:<{iw}}\t  [cyan]{styp}[/]")
-    cout()
-
-
-def load_ds(*, overview: bool = True) -> Dataset:
-    with cout.status("[dim]Loading CodeChat-V2.0 dataset[/]", spinner="flip"):
-        ds = load_dataset(DS_NAME, revision=DS_REVISION, cache_dir=str(CACHE_DIR))["train"]
-
-    if overview:
-        show_oview(ds, ds_name=DS_NAME)
-    return ds
-
-
-def main() -> None:
-    load_ds()
+load_codechat_v2: Final = partial(load_ds, DS_NAME, revision=DS_REVISION)
 
 
 if __name__ == "__main__":
-    from utils.cache import graceful_exit
+    from common.utils.cache import graceful_exit
 
-    with graceful_exit("download stopped"):
-        main()
+    with graceful_exit("Download cancelled"):
+        load_codechat_v2()

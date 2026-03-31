@@ -19,6 +19,7 @@ docstring-code-format = true
 docstring-code-line-length = 120
 
 [lint]
+dummy-variable-rgx = "^_+$"
 extend-select = ["ALL"]
 extend-ignore = [
   "T201",
@@ -35,6 +36,7 @@ extend-ignore = [
   "D400",
   "D415",
   "EM101",
+  "PLR2004",
   "S101",
 ]
 

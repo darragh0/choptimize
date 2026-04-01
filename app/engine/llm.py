@@ -43,9 +43,10 @@ class LLMClient:
                 response_format={"type": "json_object"},
             )
             raw = resp.choices[0].message.content or ""
+            print(f"```\n{raw}\n```")
             try:
                 return json.loads(raw)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 if match := re.search(r"\{.*}", raw, re.DOTALL):
                     try:
                         return json.loads(match.group())
@@ -53,6 +54,13 @@ class LLMClient:
                         pass
                 if attempt < retries:
                     messages.append({"role": "assistant", "content": raw})
-                    messages.append({"role": "user", "content": "That was not valid JSON. Respond with ONLY valid JSON, no other text."})
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "That was not valid JSON. Respond with ONLY valid JSON, no other text.",
+                        }
+                    )
                     continue
-                raise ValueError(f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}")
+                msg = f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}"
+                raise ValueError(msg) from e
+        return None

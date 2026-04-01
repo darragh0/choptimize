@@ -67,6 +67,9 @@ def score_bar(score: int, max_score: int = 5) -> str:
 
 
 def display_result(result: AnalysisResult, *, verbose: bool) -> None:
+    if result.scores.summary:
+        cout(f"{result.scores.summary}")
+
     cout("\nPrompt Quality Scores:")
     for dim in ("clarity", "specificity", "completeness"):
         ds = getattr(result.scores, dim)

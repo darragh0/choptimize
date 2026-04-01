@@ -41,6 +41,7 @@ class ScoreResult(BaseModel):
     clarity: DimensionScore
     specificity: DimensionScore
     completeness: DimensionScore
+    summary: str
 
     @property
     def overall(self) -> ScoreCont:

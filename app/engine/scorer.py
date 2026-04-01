@@ -33,7 +33,8 @@ def _build_system_prompt() -> str:
         "{\n"
         '  "clarity": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
         '  "specificity": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
-        '  "completeness": {"score": <1-5>, "explanation": "<1 sentence>"}\n'
+        '  "completeness": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
+        '  "summary": "<1-2 sentence overall verdict: is this prompt good or bad, and why?>"\n'
         "}"
     )
 
@@ -49,4 +50,5 @@ def score_prompt(client: LLMClient, prompt: str) -> ScoreResult:
         clarity=DimensionScore(**raw["clarity"]),
         specificity=DimensionScore(**raw["specificity"]),
         completeness=DimensionScore(**raw["completeness"]),
+        summary=raw.get("summary", ""),
     )

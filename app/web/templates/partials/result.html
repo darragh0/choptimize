@@ -19,6 +19,10 @@
     Overall: <strong>{{ "%.1f" | format(result.scores.overall) }}</strong> / 5.0
   </div>
 
+  {% if result.scores.summary %}
+  <p class="score-summary">{{ result.scores.summary }}</p>
+  {% endif %}
+
   {% if result.detected_antipatterns %}
   <div class="antipatterns-section">
     <h3>Detected Antipatterns</h3>

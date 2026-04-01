@@ -38,6 +38,7 @@ extend-ignore = [
   "EM101",
   "PLR2004",
   "S101",
+  "RUF001",
 ]
 
 [lint.pylint]

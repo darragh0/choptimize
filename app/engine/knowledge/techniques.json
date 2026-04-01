@@ -1,0 +1,172 @@
+{
+  "techniques": [
+    {
+      "name": "Few-Shot Prompting",
+      "category": "example-driven",
+      "when_to_use": "When you need the LLM to follow a specific input/output format or coding pattern",
+      "description": "Provide 2-3 concrete examples of desired input-output pairs before the actual task",
+      "evidence": "Brown et al. (2020); Rachitsky (2025) reports few-shot can raise accuracy from near 0% to 90% on coding tasks — the most robustly supported technique for code generation",
+      "example": "Example 1: Input: [1,3,2] -> Output: [1,2,3]\nExample 2: Input: [5,1] -> Output: [1,5]\nNow sort: [4,2,7]",
+      "improves": ["clarity", "specificity"]
+    },
+    {
+      "name": "Specification Pattern",
+      "category": "structure",
+      "when_to_use": "When the prompt lacks concrete requirements like types, constraints, or edge cases",
+      "description": "Explicitly state input types, output format, constraints, error handling, and edge cases",
+      "evidence": "White et al. (2023) — Vanderbilt Prompt Pattern Catalog; structured specifications reduce ambiguity in LLM outputs",
+      "example": "Write a function that: takes a list of integers, returns the sorted list in ascending order, handles empty lists by returning [], raises TypeError for non-integer elements.",
+      "improves": ["specificity", "completeness"]
+    },
+    {
+      "name": "Output Format Specification",
+      "category": "structure",
+      "when_to_use": "When the desired output structure is ambiguous or could be interpreted multiple ways",
+      "description": "Explicitly define the expected output format, including code structure, return types, and documentation",
+      "evidence": "Anthropic Prompt Engineering Guide (2024) — explicit format instructions significantly reduce output variance",
+      "example": "Return only the Python function with type hints. Include a docstring. Do not include import statements or example usage.",
+      "improves": ["specificity", "clarity"]
+    },
+    {
+      "name": "Constraint Enumeration",
+      "category": "structure",
+      "when_to_use": "When there are non-obvious requirements like performance, memory, or compatibility constraints",
+      "description": "List all constraints as explicit numbered requirements the solution must satisfy",
+      "evidence": "White et al. (2023) — Prompt Pattern Catalog; enumerated constraints reduce missed requirements in generated code",
+      "example": "Requirements: 1. Time complexity must be O(n log n). 2. Must work with Python 3.10+. 3. No external dependencies.",
+      "improves": ["completeness", "specificity"]
+    },
+    {
+      "name": "Template Pattern",
+      "category": "structure",
+      "when_to_use": "When you want the LLM output to follow a specific structure or skeleton",
+      "description": "Provide a template with placeholders that the model should fill in",
+      "evidence": "White et al. (2023) — Prompt Pattern Catalog; templates reduce structural deviation in outputs",
+      "example": "Fill in this template:\n```python\ndef FUNC_NAME(PARAMS) -> RETURN_TYPE:\n    \"\"\"DOCSTRING\"\"\"\n    IMPLEMENTATION\n```",
+      "improves": ["specificity", "clarity"]
+    },
+    {
+      "name": "Context Grounding",
+      "category": "context",
+      "when_to_use": "When the task requires understanding of existing code, APIs, or system architecture",
+      "description": "Include relevant context like existing code, API signatures, or system design before stating the task",
+      "evidence": "OpenAI Prompt Engineering Guide (2024) — providing reference context reduces hallucination in code generation",
+      "example": "Given this existing User class:\n```python\nclass User:\n    def __init__(self, name: str, email: str): ...\n```\nAdd a method to validate the email format.",
+      "improves": ["completeness", "clarity"]
+    },
+    {
+      "name": "Negative Prompting",
+      "category": "constraint",
+      "when_to_use": "When there are common mistakes or antipatterns you want to explicitly avoid",
+      "description": "State what the model should NOT do, in addition to what it should do",
+      "evidence": "Schulhoff et al. (2024) — The Prompt Report; negative constraints reduce common error patterns in generated code",
+      "example": "Do NOT use global variables. Do NOT catch generic Exception. Do NOT use mutable default arguments.",
+      "improves": ["specificity", "completeness"]
+    },
+    {
+      "name": "Decomposition Prompting",
+      "category": "reasoning",
+      "when_to_use": "Complex tasks that involve multiple distinct sub-problems",
+      "description": "Break the task into numbered sub-tasks and ask the model to solve each sequentially",
+      "evidence": "Khot et al. (2023) — decomposed prompting outperforms chain-of-thought on complex compositional tasks",
+      "example": "Break this into steps: 1. Parse the CSV file. 2. Validate each row. 3. Transform valid rows. 4. Write output JSON.",
+      "improves": ["clarity", "completeness"]
+    },
+    {
+      "name": "Test-Driven Prompting",
+      "category": "verification",
+      "when_to_use": "When correctness is critical and you can provide test cases upfront",
+      "description": "Include expected test cases or assertions that the generated code must satisfy",
+      "evidence": "Chen et al. (2023) — including test cases in prompts improves pass@1 on HumanEval by 12-15%",
+      "example": "The function must pass these tests:\nassert sort_list([3,1,2]) == [1,2,3]\nassert sort_list([]) == []\nassert sort_list([1]) == [1]",
+      "improves": ["completeness", "specificity"]
+    },
+    {
+      "name": "Cognitive Verifier Pattern",
+      "category": "reasoning",
+      "when_to_use": "When the prompt is vague and would benefit from the LLM asking clarifying questions first",
+      "description": "Instruct the model to generate clarifying questions about the task before solving it",
+      "evidence": "White et al. (2023) — Prompt Pattern Catalog; cognitive verification reduces assumption errors",
+      "example": "Before writing code, list 3 questions you would ask to clarify this requirement. Then answer them with reasonable assumptions and proceed.",
+      "improves": ["completeness", "clarity"]
+    },
+    {
+      "name": "Language and Framework Specification",
+      "category": "context",
+      "when_to_use": "When the target language, version, or framework is not specified in the prompt",
+      "description": "Explicitly state the programming language, version, and any frameworks or libraries to use",
+      "evidence": "Anthropic Prompt Engineering Guide (2024) — language specification prevents cross-language confusion in code generation",
+      "example": "Write this in Python 3.12 using only the standard library. Use type hints and follow PEP 8.",
+      "improves": ["specificity"]
+    },
+    {
+      "name": "Error Handling Specification",
+      "category": "completeness",
+      "when_to_use": "When the prompt doesn't mention how errors or edge cases should be handled",
+      "description": "Explicitly describe expected error handling behavior, including what exceptions to raise or catch",
+      "evidence": "Schulhoff et al. (2024) — The Prompt Report; prompts lacking error handling specs produce inconsistent error behavior",
+      "example": "If the file does not exist, raise FileNotFoundError with a descriptive message. If the JSON is malformed, return None.",
+      "improves": ["completeness", "specificity"]
+    },
+    {
+      "name": "Structured XML/Markdown Prompting",
+      "category": "structure",
+      "when_to_use": "Complex prompts with multiple sections that need clear delineation",
+      "description": "Use XML tags or markdown headers to clearly separate different parts of the prompt",
+      "evidence": "Anthropic Prompt Engineering Guide (2024) — XML-structured prompts improve Claude's ability to follow multi-part instructions",
+      "example": "<task>Sort a list</task>\n<constraints>O(n log n) time</constraints>\n<output_format>Python function with type hints</output_format>",
+      "improves": ["clarity", "completeness"]
+    },
+    {
+      "name": "Minimal Context Principle",
+      "category": "efficiency",
+      "when_to_use": "When the prompt contains irrelevant information that could confuse the model",
+      "description": "Include only the context directly relevant to the task; remove unrelated background",
+      "evidence": "Shi et al. (2023) — irrelevant context in prompts degrades LLM performance, especially on reasoning tasks",
+      "example": "Instead of pasting an entire file, extract only the relevant function signature and types needed for the task.",
+      "improves": ["clarity"]
+    }
+  ],
+  "antipatterns": [
+    {
+      "name": "Role Prompting for Code Quality",
+      "description": "Assigning a persona like 'act as a senior engineer' or 'you are an expert Python developer' to improve code output quality",
+      "why_ineffective": "Role/persona assignment may shape tone and formatting but does not meaningfully alter the logical structure or quality of generated code",
+      "evidence": "Schulhoff et al. (2025) find role prompting has 'little to no effect on improving correctness'; widely adopted due to intuition rather than empirical validation",
+      "misconception": "Developers assume that telling the model to 'be an expert' will produce expert-level code. The model's capabilities are fixed regardless of assigned persona.",
+      "instead": "Use concrete techniques: provide examples (few-shot), specify constraints explicitly, include test cases. These directly improve output quality where role prompting does not."
+    },
+    {
+      "name": "Politeness/Emotional Appeals",
+      "description": "Using phrases like 'please', 'this is very important', 'my job depends on this', or 'take a deep breath' to improve output quality",
+      "why_ineffective": "Emotional framing and politeness markers do not affect the model's reasoning capabilities or code generation quality",
+      "evidence": "Schulhoff et al. (2024) — The Prompt Report; no empirical evidence that emotional appeals improve task performance on coding benchmarks",
+      "misconception": "Anthropomorphizing the model leads to the belief that motivation or pressure improves its output. LLMs are not motivated by social cues.",
+      "instead": "Replace emotional appeals with specific, actionable requirements. 'This is critical, please be careful' adds no information; 'handle null inputs by returning an empty list' does."
+    },
+    {
+      "name": "Vague Quality Adjectives",
+      "description": "Using words like 'good', 'clean', 'best', 'production-ready', or 'high-quality' without defining what those mean",
+      "why_ineffective": "These terms are subjective and provide no concrete criteria for the model to optimize against",
+      "evidence": "Anthropic Prompt Engineering Guide (2024) — vague qualitative descriptors produce inconsistent outputs; concrete criteria outperform subjective instructions",
+      "misconception": "Developers assume the model shares their mental model of 'clean code' or 'production-ready'. Different developers mean different things by these terms.",
+      "instead": "Define quality concretely: 'include type hints, handle errors with specific exceptions, keep functions under 20 lines, add docstrings for public functions.'"
+    },
+    {
+      "name": "Chain-of-Thought for Simple Code Tasks",
+      "description": "Asking the model to 'think step by step' for straightforward code generation that doesn't involve complex reasoning",
+      "why_ineffective": "CoT improves multi-step reasoning but adds unnecessary verbosity for simple generation tasks, and modern models already perform internal reasoning",
+      "evidence": "Wei et al. (2022) show CoT benefits complex reasoning; Schulhoff et al. (2025) note the effect fades for straightforward generation. Modern coding assistants incorporate CoT-style reasoning internally.",
+      "misconception": "If step-by-step helps for math, it must help for all tasks. In practice, for simple code generation it just adds latency without improving correctness.",
+      "instead": "Reserve CoT for genuinely complex tasks (algorithm design, multi-step transformations). For simple functions, a clear specification is more effective."
+    },
+    {
+      "name": "Excessive Prompt Length",
+      "description": "Including large amounts of tangential context, background, or multiple unrelated instructions in a single prompt",
+      "why_ineffective": "Irrelevant context actively degrades LLM performance. The model may attend to irrelevant details instead of the core task.",
+      "evidence": "Shi et al. (2023) — demonstrated that adding irrelevant information to prompts measurably degrades performance on reasoning tasks",
+      "misconception": "More context is always better. In reality, signal-to-noise ratio matters — excessive context dilutes the actual requirements.",
+      "instead": "Apply the Minimal Context Principle: include only what's directly relevant to the task. If the model needs background, provide it in a structured, clearly delineated section."
+    }
+  ]
+}

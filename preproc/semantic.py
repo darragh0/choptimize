@@ -71,7 +71,7 @@ def setup_client(host: str) -> OpenAI:
         client = OpenAI(base_url=f"{host}/v1", api_key="none")
         client.models.list()  # Health check
     except Exception as e:
-        cerr(f"Cannot connect to LLM server at [cyan]{host}[/] -- is it running?", exit_code=1)
+        cerr(f"cannot connect to LLM server at [cyan]{host}[/] -- is it running?", exit_code=1)
         raise RuntimeError("unreachable") from e
     return client
 
@@ -329,7 +329,7 @@ def merge_shards() -> None:
 def parse_shard(value: str) -> tuple[int, int]:
     """Parse 'K/N' shard argument."""
     parts = value.split("/")
-    if len(parts) != 2:  # noqa: PLR2004
+    if len(parts) != 2:
         msg = f"--shard must be K/N (e.g. 1/3), got: {value}"
         raise ValueError(msg)
     k, n = int(parts[0]), int(parts[1])

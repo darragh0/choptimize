@@ -15,6 +15,7 @@ def parse_with_opts(*opts: Opt) -> SimpleNamespace:
             triggers=lambda: phelp(*special_opts, *opts),
         ),
         SpecialOpt(short="-V", long="--version", desc="Show program's version number & exit", triggers=pver),
+        *(opt for opt in opts if isinstance(opt, SpecialOpt)),
     )
 
     args = sys.argv[1:]

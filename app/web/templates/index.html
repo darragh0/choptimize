@@ -1,9 +1,54 @@
 <!doctype html>
-<html>
-  <body>
-    <form action="/submit" method="post">
-      <input name="text" style="width: 300px; height: 40px" />
-      <button type="submit">Optimize</button>
-    </form>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Choptimize</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Chop<span>timize</span></h1>
+      <p class="tagline">Analyse & optimize the quality of your LLM prompt.</p>
+    </header>
+
+    <section class="prompt-area">
+      <form
+        hx-post="/optimize"
+        hx-target="#result"
+        hx-swap="innerHTML"
+        hx-indicator="#loader"
+        hx-disabled-elt="button[type='submit']"
+      >
+        <textarea
+          name="prompt"
+          placeholder="Paste or type a prompt here…"
+          required
+          autocomplete="off"
+          spellcheck="false"
+        ></textarea>
+        <div class="form-footer">
+          <label class="improve-toggle">
+            <input type="checkbox" name="improve" value="true" />
+            <span>Generate improved prompt</span>
+          </label>
+          <div id="loader" class="loader" aria-label="Optimising…">
+            <span></span><span></span><span></span>
+          </div>
+          <button type="submit">Optimize</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="result" aria-live="polite"></section>
+  </main>
+
+  <footer>Choptimize &mdash; Research tool</footer>
+</body>
 </html>

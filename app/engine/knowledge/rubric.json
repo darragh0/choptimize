@@ -1,0 +1,36 @@
+{
+  "context": "This rubric evaluates standalone developer prompts BEFORE code generation. It assesses whether the prompt gives an LLM enough information to produce high-quality code, without reference to any generated output.",
+  "dimensions": {
+    "clarity": {
+      "description": "How clear and unambiguous is the prompt? Can it be interpreted in only one way?",
+      "levels": {
+        "1": "Ambiguous or incoherent. Multiple valid interpretations exist. Key terms are undefined. A developer reading this would need to ask 3+ clarifying questions before starting.",
+        "2": "Intent is guessable but vague. Important words have multiple meanings in context. The reader must make significant assumptions about what is actually wanted.",
+        "3": "Core intent is understandable but some phrasing is imprecise. One or two aspects could be misread. A competent developer could proceed but might guess wrong on details.",
+        "4": "Clear and well-phrased. Intent is obvious. Minor ambiguity exists but is unlikely to cause meaningful deviation in the output.",
+        "5": "Unambiguous. Single clear interpretation. Precise language throughout. No reasonable reader would misunderstand what is being asked."
+      }
+    },
+    "specificity": {
+      "description": "How specific are the requirements? Does the prompt include concrete details like input/output types, constraints, edge cases, language, or framework?",
+      "levels": {
+        "1": "Entirely generic. No types, formats, constraints, or technical details. Could apply to any language or paradigm. Example: 'make a sort function'.",
+        "2": "Minimal specifics. Maybe mentions a language but lacks types, constraints, or expected behavior on edge cases. Most implementation decisions are left to the LLM.",
+        "3": "Some concrete details present (e.g., language, main input type) but missing important specifics like return type, error handling, performance requirements, or edge case behavior.",
+        "4": "Mostly specific. Covers language, types, and key constraints. One or two secondary details (e.g., thread safety, specific error types) are unspecified but inferable.",
+        "5": "Fully specified. Input/output types, constraints, edge cases, error handling, and non-functional requirements are all explicitly stated. Leaves minimal room for interpretation."
+      }
+    },
+    "completeness": {
+      "description": "Does the prompt provide all necessary context for the task? Are there missing details that force the LLM to make assumptions?",
+      "levels": {
+        "1": "Critical context is missing. The LLM must invent the problem domain, data structures, or core requirements. The prompt is a fragment, not a task description.",
+        "2": "Major gaps. The main task is stated but essential context is absent — e.g., no mention of existing code it must integrate with, no data format, no success criteria.",
+        "3": "Adequate for a basic attempt. The core task and primary context are present, but secondary context (dependencies, environment, integration points) is missing.",
+        "4": "Nearly complete. All important context is provided. Only minor assumptions needed — e.g., exact library version, or whether to include logging.",
+        "5": "Self-contained. Everything needed to produce a correct solution is in the prompt: task, context, constraints, examples, and expected behavior. No reasonable assumption is left unstated."
+      }
+    }
+  },
+  "scoring_instructions": "Score each dimension independently. Use the level descriptors as anchors — a score of 3 means the prompt matches the level 3 description, not that it is 'average'. Provide a one-sentence explanation for each score that references specific aspects of the prompt. Do not grade on a curve; an objectively poor prompt scores low regardless of what typical prompts look like."
+}

@@ -1,0 +1,65 @@
+<div class="result-card">
+  <p class="result-label">Prompt analysed</p>
+  <blockquote class="result-prompt">{{ prompt }}</blockquote>
+
+  <div class="score-grid">
+    {% for dim, ds in [('clarity', result.scores.clarity), ('specificity', result.scores.specificity), ('completeness', result.scores.completeness)] %}
+    <div class="score-card">
+      <span class="score-title">{{ dim | capitalize }}</span>
+      <div class="score-bar">
+        <div class="score-fill score-{{ ds.score }}" style="width: {{ ds.score * 20 }}%"></div>
+      </div>
+      <span class="score-value">{{ ds.score }}/5</span>
+      <span class="score-explain">{{ ds.explanation }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="overall-score">
+    Overall: <strong>{{ "%.1f" | format(result.scores.overall) }}</strong> / 5.0
+  </div>
+
+  {% if result.detected_antipatterns %}
+  <div class="antipatterns-section">
+    <h3>Detected Antipatterns</h3>
+    <ul class="antipattern-list">
+      {% for ap in result.detected_antipatterns %}
+      <li class="antipattern-item">
+        <strong>{{ ap.name }}</strong>
+        <p class="antipattern-why">{{ ap.why_ineffective }}</p>
+        <p class="antipattern-instead"><strong>Instead:</strong> {{ ap.instead }}</p>
+        <p class="antipattern-evidence">{{ ap.evidence }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if result.relevant_techniques %}
+  <div class="techniques-section">
+    <h3>Suggested Techniques</h3>
+    <ul class="technique-list">
+      {% for t in result.relevant_techniques %}
+      <li>
+        <strong>{{ t.name }}</strong>
+        <span class="dims-tag">improves {{ t.improves | join(', ') }}</span>
+        <p class="technique-desc">{{ t.description }}</p>
+        <p class="technique-evidence">{{ t.evidence }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if result.improvement %}
+  <div class="improvement-section">
+    <h3>Improved Prompt</h3>
+    <blockquote class="improved-prompt">{{ result.improvement.improved_prompt }}</blockquote>
+    {% for ch in result.improvement.changes %}
+    <p class="change-note">
+      <strong>{{ ch.dimension }}</strong>: applied <em>{{ ch.technique_applied }}</em> &mdash; {{ ch.explanation }}
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

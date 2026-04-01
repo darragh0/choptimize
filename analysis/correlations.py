@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, TypedDict
+from typing import Any, Final, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -33,17 +33,18 @@ class ModelCorr(TypedDict):
     mean_code_q: float
 
 
-def descriptive_stats(df: pd.DataFrame) -> dict:
+def descriptive_stats(df: pd.DataFrame) -> dict[str, Any]:
     """Distributions for all scored dims, + parseable rate & per-model counts."""
-    result = {
-        "dims": {},
+    dims: dict[str, dict[str, Any]] = {}
+    result: dict[str, Any] = {
+        "dims": dims,
         "parseable_rate": df["parseable"].mean(),
         "model_counts": df.groupby("model").size().to_dict(),
     }
 
     for dim in (*PROMPT_DIMS, *CODE_DIMS):
         col = df[dim]
-        result["dims"][dim] = {
+        dims[dim] = {
             "mean": round(col.mean(), 3),
             "median": round(col.median(), 3),
             "std": round(col.std(), 3),
@@ -114,7 +115,7 @@ def syntax_vs_semantic(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return rho_df, p_adj_df
 
 
-def composite_regression(df: pd.DataFrame) -> dict:
+def composite_regression(df: pd.DataFrame) -> dict[str, float]:
     """OLS + Spearman on composite prompt quality vs composite code quality."""
     prompt_q = df[PROMPT_DIMS].mean(axis=1)
     code_q = df[CODE_DIMS].mean(axis=1)
@@ -159,14 +160,14 @@ def per_model_correlation(df: pd.DataFrame) -> list[ModelCorr]:
     return sorted(rows, key=lambda r: r["rho"], reverse=True)
 
 
-def kruskal_wallis(df: pd.DataFrame) -> dict:
+def kruskal_wallis(df: pd.DataFrame) -> dict[str, dict[str, float]]:
     """Kruskal-Wallis H-test: do code quality scores differ significantly across models?
 
     Justifies per-model stratification. One test per code dim + composite.
     """
     df = df.copy()
     df["code_composite"] = df[CODE_DIMS].mean(axis=1)
-    results: dict = {}
+    results: dict[str, dict[str, float]] = {}
 
     for dim in (*CODE_DIMS, "code_composite"):
         groups = [g[dim].to_numpy() for _, g in df.groupby("model") if len(g) >= MIN_GROUP_SIZE]

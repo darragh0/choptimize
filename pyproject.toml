@@ -26,6 +26,11 @@ dependencies = [
   "scipy>=1.15.0",
   "seaborn>=0.13.0",
   "fastapi>=0.135.2",
+  "uvicorn>=0.34.0",
+  "python-multipart>=0.0.20",
+  "jinja2>=3.1.6",
+  "chromadb>=1.0.0",
+  "sentence-transformers>=4.1.0",
 ]
 
 [project.urls]
@@ -34,14 +39,22 @@ Repository = "https://github.com/darragh0/choptimize?tab=readme-ov-file#choptimi
 
 [dependency-groups]
 dev = [
-    "deptry>=0.24.0",
-    "mypy>=1.19.1",
-    "pandas-stubs>=3.0.0.260204",
-    "pyright>=1.1.408",
-    "ruff>=0.14.14",
-    "scipy-stubs>=1.17.1.3",
-    "typ>=0.11.0",
+  "basedpyright>=1.38.4",
+  "deptry>=0.24.0",
+  "mypy>=1.19.1",
+  "pandas-stubs>=3.0.0.260204",
+  "pyright>=1.1.408",
+  "ruff>=0.14.14",
+  "scipy-stubs>=1.17.1.3",
+  "typ>=0.11.0",
 ]
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+reportUnknownMemberType = false           # incomplete matplotlib/seaborn stubs
+reportUnusedCallResult = false            # unused matplotlib setters return Text objects
+reportExplicitAny = false                 # Required for dict[str, Any]
+reportInvalidStringEscapeSequence = false # Allow raw Unicode chars in display strings
 
 [tool.deptry]
 known_first_party = ["common", "utils", "preproc", "download", "analysis"]

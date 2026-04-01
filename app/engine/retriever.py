@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
@@ -8,9 +7,9 @@ from typing import TYPE_CHECKING, Final, cast
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from common.utils.dataset import load_ds
-from preproc.utils.progress import tracked
 
 from app.engine.models import Antipattern, SimilarPrompt, Technique, TechniquesSchema
+from preproc.utils.progress import tracked
 
 if TYPE_CHECKING:
     from chromadb import Collection
@@ -162,7 +161,6 @@ class Retriever:
             if meta is None:
                 continue
             raw = dict(meta)
-            raw["improves"] = json.loads(str(raw["improves"]))
             out.append(Technique.model_validate(raw))
 
         return out

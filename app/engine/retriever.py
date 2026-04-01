@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Final, cast
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from common.utils.dataset import load_ds
+from preproc.utils.progress import tracked
 
 from app.engine.models import Antipattern, SimilarPrompt, Technique, TechniquesSchema
 
@@ -118,8 +119,16 @@ class Retriever:
             documents.append(prompt)
             metadatas.append(cast("Metadata", meta))
 
-        if ids:
-            self._prompts.add(ids=ids, documents=documents, metadatas=metadatas)
+        if not ids:
+            return
+
+        batch_size = 50
+        batches = [
+            (ids[s : s + batch_size], documents[s : s + batch_size], metadatas[s : s + batch_size])
+            for s in range(0, len(ids), batch_size)
+        ]
+        for _, (b_ids, b_docs, b_meta) in tracked(batches, "Indexing dataset", total=len(batches)):
+            self._prompts.add(ids=b_ids, documents=b_docs, metadatas=b_meta)
 
     def find_similar_prompts(self, prompt: str, n: int = 3) -> list[SimilarPrompt]:
         results = self._prompts.query(query_texts=[prompt], n_results=n)

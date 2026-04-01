@@ -6,11 +6,11 @@ from common.utils.console import cout, cwarn
 from app.cli.display import display_result
 from app.cli.parsing.cli import Opt, parse_with_opts
 from app.cli.parsing.opt import SpecialOpt
-from app.engine import Engine
-from app.web.app import app as web_app
 
 
 def _launch_web() -> None:
+    from app.web.app import app as web_app  # noqa: PLC0415
+
     uvicorn.run(web_app, host="127.0.0.1", port=8000)
 
 
@@ -28,9 +28,12 @@ def cli() -> None:
 
     try:
         with cout.status(f'Analyzing\n  [dim]>> [green]"{prompt_clamped}"[/][/]', spinner="line"):
+            from app.engine import Engine  # noqa: PLC0415
+
             engine = Engine(model=cfg.model, llm_url=cfg.llm_url)
             result = engine.analyze(cfg.prompt, improve=cfg.improve)
-            display_result(result, verbose=cfg.verbose)
+
+        display_result(result, verbose=cfg.verbose)
     except KeyboardInterrupt:
         cwarn("analysis interrupted", exit_code=130)
 

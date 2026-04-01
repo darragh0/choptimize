@@ -42,8 +42,6 @@ def _build_system_prompt() -> str:
 
 _SYSTEM = _build_system_prompt()
 
-print(_SYSTEM)
-
 
 def score_prompt(client: LLMClient, prompt: str) -> ScoreResult:
     raw = client.complete_json(_SYSTEM, prompt)

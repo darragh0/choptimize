@@ -63,9 +63,13 @@ def load_ds(
     revision: str | Version | None = None,
     split: str = "train",
     overview: bool = True,
+    status: str | None = "[dim]Loading {name} dataset[/]",
 ) -> Dataset:
     try:
-        with cout.status(f"[dim]Loading {name} dataset[/]", spinner="flip"):
+        if status is not None:
+            with cout.status(status.format(name=name) if "{name}" in status else status, spinner="flip"):
+                ds = load_dataset(name, revision=revision, cache_dir=str(CACHE_DIR))[split]
+        else:
             ds = load_dataset(name, revision=revision, cache_dir=str(CACHE_DIR))[split]
     except HfHubHTTPError as e:
         cwarn(f"failed to load dataset from huggingface: {e}")

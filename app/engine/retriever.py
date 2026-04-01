@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
@@ -61,28 +60,11 @@ class Retriever:
     _antipatterns: list[Antipattern]
     _antipatterns_by_name: dict[str, Antipattern]
 
-    @staticmethod
-    def _load_ef() -> EmbeddingFunction[Embeddable]:
-        """Load embedding function with noisy stdout/stderr suppressed at fd level."""
-        devnull_fd = os.open(os.devnull, os.O_WRONLY)
-        old_stdout = os.dup(1)
-        old_stderr = os.dup(2)
-        try:
-            os.dup2(devnull_fd, 1)
-            os.dup2(devnull_fd, 2)
-            return cast(
-                "EmbeddingFunction[Embeddable]",
-                SentenceTransformerEmbeddingFunction(model_name=_EMBED_MODEL),
-            )
-        finally:
-            os.dup2(old_stdout, 1)
-            os.dup2(old_stderr, 2)
-            os.close(old_stdout)
-            os.close(old_stderr)
-            os.close(devnull_fd)
-
     def __init__(self, chroma_dir: Path = _CHROMA_DIR) -> None:
-        ef = self._load_ef()
+        ef = cast(
+            "EmbeddingFunction[Embeddable]",
+            SentenceTransformerEmbeddingFunction(model_name=_EMBED_MODEL),
+        )
         self._client = chromadb.PersistentClient(path=str(chroma_dir))
         self._prompts = self._client.get_or_create_collection("dataset_prompts", embedding_function=ef)
         self._techniques = self._client.get_or_create_collection("techniques", embedding_function=ef)

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from openai import OpenAI
 
@@ -30,13 +31,28 @@ class LLMClient:
         )
         return resp.choices[0].message.content or ""
 
-    def complete_json(self, system: str, user: str) -> dict:
-        resp = self._client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            response_format={"type": "json_object"},
-        )
-        return json.loads(resp.choices[0].message.content or "{}")
+    def complete_json(self, system: str, user: str, *, retries: int = 2) -> dict:
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        for attempt in range(retries + 1):
+            resp = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                response_format={"type": "json_object"},
+            )
+            raw = resp.choices[0].message.content or ""
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                if match := re.search(r"\{.*}", raw, re.DOTALL):
+                    try:
+                        return json.loads(match.group())
+                    except json.JSONDecodeError:
+                        pass
+                if attempt < retries:
+                    messages.append({"role": "assistant", "content": raw})
+                    messages.append({"role": "user", "content": "That was not valid JSON. Respond with ONLY valid JSON, no other text."})
+                    continue
+                raise ValueError(f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}")

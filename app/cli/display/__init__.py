@@ -12,9 +12,9 @@ if TYPE_CHECKING:
 
 def _display_antipatterns(pats: list[Antipattern], *, verbose: bool) -> None:
     if pats:
-        cout("\n[bold red]Detected Antipatterns[/]\n")
+        cout("\n[red]Detected Antipatterns[/]:")
         for ap in pats:
-            cout(f"  [red]✗[/] [bold]{ap.name}[/]")
+            cout(f"  [red]✗[/] {ap.name}")
             cout(f"    [dim]{ap.why_ineffective}[/]")
             cout(f"    [green]Instead:[/] {ap.instead}")
             if verbose:
@@ -23,10 +23,10 @@ def _display_antipatterns(pats: list[Antipattern], *, verbose: bool) -> None:
 
 def _display_techs(techs: list[Technique], *, verbose: bool) -> None:
     if techs:
-        cout("\n[bold]Suggested Techniques[/]\n")
+        cout("\nSuggested Techniques:")
         for t in techs:
             dims = ", ".join(t.improves)
-            cout(f"  [green]•[/] [bold]{t.name}[/] [dim](improves {dims})[/]")
+            cout(f"  [green]•[/] {t.name} [dim](improves {dims})[/]")
             if verbose:
                 cout(f"    [dim]{t.description}[/]")
                 cout(f"    [dim]Evidence: {t.evidence}[/]")
@@ -34,7 +34,7 @@ def _display_techs(techs: list[Technique], *, verbose: bool) -> None:
 
 def _display_similar(sim_prompts: list[SimilarPrompt], *, verbose: bool) -> None:
     if sim_prompts and verbose:
-        cout("\n[bold]Similar Prompts from Dataset[/]\n")
+        cout("\nSimilar Prompts from Dataset:")
         for sp in sim_prompts:
             scores_str = ", ".join(
                 f"{k}={v}" for k, v in sp.scores.items() if k in ("clarity", "specificity", "completeness")
@@ -67,15 +67,15 @@ def score_bar(score: int, max_score: int = 5) -> str:
 
 
 def display_result(result: AnalysisResult, *, verbose: bool) -> None:
-    cout("\n[bold]Prompt Quality Scores[/]\n")
+    cout("\nPrompt Quality Scores:")
     for dim in ("clarity", "specificity", "completeness"):
         ds = getattr(result.scores, dim)
-        cout(f"  {dim:<15} {score_bar(ds.score)}")
+        cout(f"  [dim]{dim:<15}[/] {score_bar(ds.score)}")
         if verbose:
             cout(f"  [dim]{' ' * 15} {ds.explanation}[/]")
 
     overall = result.scores.overall
-    cout(f"\n  {'overall':<15} [bold]{overall:.1f}[/] / 5.0")
+    cout(f"\n  [green]{'overall':<15}[/] {overall:.1f} / 5.0")
 
     _display_antipatterns(result.detected_antipatterns, verbose=verbose)
     _display_techs(result.relevant_techniques, verbose=verbose)

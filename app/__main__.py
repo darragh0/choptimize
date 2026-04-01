@@ -19,6 +19,7 @@ def cli() -> None:
         Opt(short="-v", long="--verbose", desc="Enable verbose output"),
         Opt(short="-i", long="--improve", desc="Generate an improved version of the prompt"),
         Opt(short="-m", long="--model", desc="LLM model name", takes=("model", str)),
+        Opt(short="-r", long="--raw", desc="Show raw LLM resposne"),
         Opt(long="--llm-url", desc="LLM API base URL", takes=("url", str)),
         SpecialOpt(short="-w", long="--web", desc="Launch web server (ignores prompt arg)", triggers=_launch_web),
     )
@@ -31,7 +32,7 @@ def cli() -> None:
             from app.engine import Engine  # noqa: PLC0415
 
             engine = Engine(model=cfg.model, llm_url=cfg.llm_url)
-            result = engine.analyze(cfg.prompt, improve=cfg.improve)
+            result = engine.analyze(cfg.prompt, improve=cfg.improve, show_raw=cfg.raw)
 
         display_result(result, verbose=cfg.verbose)
     except KeyboardInterrupt:

@@ -28,9 +28,9 @@ class Engine:
             self._retriever = Retriever()
         return self._retriever
 
-    def analyze(self, prompt: str, *, improve: bool = False) -> AnalysisResult:
+    def analyze(self, prompt: str, *, improve: bool = False, show_raw: bool) -> AnalysisResult:
         with ThreadPoolExecutor(max_workers=3) as pool:
-            score_fut = pool.submit(score_prompt, self._llm, prompt)
+            score_fut = pool.submit(score_prompt, self._llm, prompt, show_raw=show_raw)
             similar_fut = pool.submit(self.retriever.find_similar_prompts, prompt)
             antipattern_fut = pool.submit(self.retriever.detect_antipatterns, prompt)
 

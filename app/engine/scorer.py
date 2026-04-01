@@ -44,8 +44,11 @@ def _build_system_prompt() -> str:
 _SYSTEM = _build_system_prompt()
 
 
-def score_prompt(client: LLMClient, prompt: str) -> ScoreResult:
-    raw = client.complete_json(_SYSTEM, prompt)
+_REQUIRED_DIMS = ("clarity", "specificity", "completeness")
+
+
+def score_prompt(client: LLMClient, prompt: str, *, show_raw: bool) -> ScoreResult:
+    raw = client.complete_json(_SYSTEM, prompt, required_keys=_REQUIRED_DIMS, show_raw=show_raw)
     return ScoreResult(
         clarity=DimensionScore(**raw["clarity"]),
         specificity=DimensionScore(**raw["specificity"]),

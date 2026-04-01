@@ -1,8 +1,9 @@
 import json
 import os
-import re
 
+from common.utils.console import cout
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 _DEFAULT_URL = "http://localhost:11434/v1"
 _DEFAULT_MODEL = "gemma3:27b"
@@ -31,11 +32,20 @@ class LLMClient:
         )
         return resp.choices[0].message.content or ""
 
-    def complete_json(self, system: str, user: str, *, retries: int = 2) -> dict:
-        messages = [
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        *,
+        retries: int = 2,
+        required_keys: tuple[str, ...] = (),
+        show_raw: bool,
+    ) -> dict:
+        messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
+
         for attempt in range(retries + 1):
             resp = self._client.chat.completions.create(
                 model=self.model,
@@ -43,15 +53,14 @@ class LLMClient:
                 response_format={"type": "json_object"},
             )
             raw = resp.choices[0].message.content or ""
-            print(f"```\n{raw}\n```")
+            if show_raw:
+                cout("Raw LLM response:")
+                cout(f"```\n{raw}\n```")
+
+            parsed: dict | None = None
             try:
-                return json.loads(raw)
+                parsed = json.loads(raw)
             except json.JSONDecodeError as e:
-                if match := re.search(r"\{.*}", raw, re.DOTALL):
-                    try:
-                        return json.loads(match.group())
-                    except json.JSONDecodeError:
-                        pass
                 if attempt < retries:
                     messages.append({"role": "assistant", "content": raw})
                     messages.append(
@@ -63,4 +72,24 @@ class LLMClient:
                     continue
                 msg = f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}"
                 raise ValueError(msg) from e
-        return None
+
+            if required_keys and parsed is not None:
+                missing = [k for k in required_keys if k not in parsed]
+                if missing:
+                    if attempt < retries:
+                        messages.append({"role": "assistant", "content": raw})
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"Missing required keys: {', '.join(missing)}. "
+                                    "Respond with ONLY valid JSON containing all required keys."
+                                ),
+                            }
+                        )
+                        continue
+                    msg = f"LLM response missing keys {missing} after {retries + 1} attempts"
+                    raise ValueError(msg)
+
+            return parsed  # type: ignore[return-value]
+        return None  # type: ignore[return-value]

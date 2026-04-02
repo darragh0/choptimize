@@ -28,15 +28,7 @@ def _build_system_prompt() -> str:
         parts.append("")
 
     parts.append(f"{_RUBRIC['scoring_instructions']}")
-    parts.append(
-        "\nRespond with ONLY valid JSON in this exact format:\n"
-        "{\n"
-        '  "clarity": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
-        '  "specificity": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
-        '  "completeness": {"score": <1-5>, "explanation": "<1 sentence>"},\n'
-        '  "summary": "<1-2 sentence overall verdict: is this prompt good or bad, and why?>"\n'
-        "}"
-    )
+    parts.append("\nRespond with ONLY valid JSON matching the provided schema.")
 
     return "\n".join(parts)
 
@@ -44,11 +36,8 @@ def _build_system_prompt() -> str:
 _SYSTEM = _build_system_prompt()
 
 
-_REQUIRED_DIMS = ("clarity", "specificity", "completeness")
-
-
 def score_prompt(client: LLMClient, prompt: str, *, show_raw: bool) -> ScoreResult:
-    raw = client.complete_json(_SYSTEM, prompt, required_keys=_REQUIRED_DIMS, show_raw=show_raw)
+    raw = client.complete_json(_SYSTEM, prompt, response_model=ScoreResult, show_raw=show_raw)
     return ScoreResult(
         clarity=DimensionScore(**raw["clarity"]),
         specificity=DimensionScore(**raw["specificity"]),

@@ -27,17 +27,7 @@ Given the inputs, rewrite the prompt to improve weak dimensions. \
 Apply the provided techniques. \
 Explain each change you made and which technique you applied.
 
-Respond with ONLY valid JSON:
-{
-  "improved_prompt": "<the rewritten prompt>",
-  "changes": [
-    {
-      "dimension": "<clarity|specificity|completeness>",
-      "technique_applied": "<technique name>",
-      "explanation": "<why this change helps>"
-    }
-  ]
-}
+Respond with ONLY valid JSON matching the provided schema.
 </instructions>
 </task>\
 """
@@ -81,9 +71,11 @@ def improve_prompt(
     scores: ScoreResult,
     techniques: list[Technique],
     similar: list[SimilarPrompt],
+    *,
+    show_raw: bool,
 ) -> ImprovementResult:
     context = _build_context(prompt, scores, techniques, similar)
-    raw = client.complete_json(_SYSTEM, context)
+    raw = client.complete_json(_SYSTEM, context, response_model=ImprovementResult, show_raw=show_raw)
     return ImprovementResult(
         improved_prompt=raw["improved_prompt"],
         changes=[ImprovementChange(**c) for c in raw["changes"]],

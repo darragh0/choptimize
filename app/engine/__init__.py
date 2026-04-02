@@ -13,12 +13,7 @@ class Engine:
     _llm: LLMClient
     _retriever: Retriever | None
 
-    def __init__(
-        self,
-        model: str | None = None,
-        llm_url: str | None = None,
-        api_key: str | None = None,
-    ) -> None:
+    def __init__(self, model: str | None = None, llm_url: str | None = None, api_key: str | None = None) -> None:
         self._llm = LLMClient(base_url=llm_url, model=model, api_key=api_key)
         self._retriever = None
 
@@ -43,7 +38,7 @@ class Engine:
 
         improvement = None
         if improve:
-            improvement = improve_prompt(self._llm, prompt, scores, techniques, similar)
+            improvement = improve_prompt(self._llm, prompt, scores, techniques, similar, show_raw=show_raw)
 
         return AnalysisResult(
             scores=scores,

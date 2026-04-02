@@ -1,12 +1,31 @@
 import json
 import os
+from typing import Any
 
 from common.utils.console import cout
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
+from openai.types.shared_params.response_format_json_schema import JSONSchema, ResponseFormatJSONSchema
+from pydantic import BaseModel
 
 _DEFAULT_URL = "http://localhost:11434/v1"
 _DEFAULT_MODEL = "gemma3:27b"
+
+
+class _Conversation:
+    messages: list[ChatCompletionMessageParam]
+
+    def __init__(self, system: str, user: str) -> None:
+        self.messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+
+    def usr(self, msg: str) -> None:
+        self.messages.append({"role": "user", "content": msg})
+
+    def llm(self, msg: str) -> None:
+        self.messages.append({"role": "assistant", "content": msg})
 
 
 class LLMClient:
@@ -22,74 +41,47 @@ class LLMClient:
             api_key=api_key or os.environ.get("CHOPTIMIZE_LLM_API_KEY", "ollama"),
         )
 
-    def complete(self, system: str, user: str) -> str:
-        resp = self._client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        )
-        return resp.choices[0].message.content or ""
+    def config(self, response_model: type[BaseModel]) -> dict[str, Any]:
+        return {
+            "model": self.model,
+            "response_format": ResponseFormatJSONSchema(
+                type="json_schema",
+                json_schema=JSONSchema(
+                    name=response_model.__name__,
+                    schema=response_model.model_json_schema(),
+                    strict=True,
+                ),
+            ),
+        }
 
     def complete_json(
         self,
         system: str,
         user: str,
         *,
+        response_model: type[BaseModel],
         retries: int = 2,
-        required_keys: tuple[str, ...] = (),
-        show_raw: bool,
-    ) -> dict:
-        messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ]
+        show_raw: bool = False,
+    ) -> dict[str, Any]:
+        conv = _Conversation(system, user)
+        config = self.config(response_model)
 
         for attempt in range(retries + 1):
-            resp = self._client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                response_format={"type": "json_object"},
+            raw = (
+                self._client.chat.completions.create(**config, messages=conv.messages).choices[0].message.content or ""
             )
-            raw = resp.choices[0].message.content or ""
             if show_raw:
-                cout("Raw LLM response:")
-                cout(f"```\n{raw}\n```")
+                cout(f"Raw LLM response ({attempt}):")
+                cout(f"{raw}\n")
 
-            parsed: dict | None = None
             try:
-                parsed = json.loads(raw)
+                return json.loads(raw)
             except json.JSONDecodeError as e:
                 if attempt < retries:
-                    messages.append({"role": "assistant", "content": raw})
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": "That was not valid JSON. Respond with ONLY valid JSON, no other text.",
-                        }
-                    )
+                    conv.llm(raw)
+                    conv.usr("That was not valid JSON. Respond with ONLY valid JSON, no other text.")
                     continue
                 msg = f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}"
                 raise ValueError(msg) from e
 
-            if required_keys and parsed is not None:
-                missing = [k for k in required_keys if k not in parsed]
-                if missing:
-                    if attempt < retries:
-                        messages.append({"role": "assistant", "content": raw})
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    f"Missing required keys: {', '.join(missing)}. "
-                                    "Respond with ONLY valid JSON containing all required keys."
-                                ),
-                            }
-                        )
-                        continue
-                    msg = f"LLM response missing keys {missing} after {retries + 1} attempts"
-                    raise ValueError(msg)
-
-            return parsed  # type: ignore[return-value]
-        return None  # type: ignore[return-value]
+        raise ValueError("unreachable")

@@ -9,7 +9,7 @@ from openai.types.shared_params.response_format_json_schema import JSONSchema, R
 from pydantic import BaseModel
 
 _DEFAULT_URL = "http://localhost:11434/v1"
-_DEFAULT_MODEL = "gemma3:27b"
+_DEFAULT_MODEL = "gpt-oss:120b"
 
 
 class _Conversation:

@@ -19,7 +19,7 @@ docstring-code-format = true
 docstring-code-line-length = 120
 
 [lint]
-dummy-variable-rgx = "^_+$"
+dummy-variable-rgx = "^_\\w*$"
 extend-select = ["ALL"]
 extend-ignore = [
   "T201",
@@ -39,7 +39,11 @@ extend-ignore = [
   "PLR2004",
   "S101",
   "RUF001",
+  "RUF100",
 ]
+
+[lint.per-file-ignores]
+"app/__main__.py" = ["PLC0415"]
 
 [lint.pylint]
 # Max args for function/method

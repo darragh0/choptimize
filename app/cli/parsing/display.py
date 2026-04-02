@@ -9,6 +9,8 @@ from rich.theme import Theme
 from app import __desc__, __prog__, __version__
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from app.cli.parsing.opt import Opt
 
 N_INDENT: Final = 2
@@ -29,22 +31,15 @@ _APP_THEME: Final = Theme(
 
 _VERSION: Final = f"[prog]{__prog__}[/] [ver]v{__version__}[/]"
 
-_HELP: Final = f"""\
-{__desc__}
-
-[help_title]Args[/]:
-{" " * N_INDENT}[arg]prompt[/]   Prompt to optimize
-
-[help_title]Options[/]:
-{{opt_content}}\
-"""
-
 _USAGE: Final = f"\n[help_title]Usage:[/] [prog]{__prog__}[/] [metavar]<options>[/] [arg]prompt...[/]"
 
 _COMMON_ERR: str = (
     f"\n{' ' * N_INDENT}[tip]tip:[/] use [arg]--[/] before your prompt to "
     "include flags literally, e.g. [arg]-- my prompt --like-this[/]"
 )
+
+
+_I: Final = " " * N_INDENT
 
 
 def _ljust(opts: tuple[Opt, ...]) -> int:
@@ -55,9 +50,47 @@ def _ljust(opts: tuple[Opt, ...]) -> int:
     )
 
 
-def phelp(*opts: Opt) -> None:
+def phelp(*opts: Opt, cmds: Sequence[tuple[str, str]] = ()) -> None:
     lj = _ljust(opts)
-    cout(_HELP.format(opt_content="\n".join(o.help(lj) for o in opts)))
+    lines: list[str] = [__desc__, ""]
+
+    lines.append("[help_title]Usage[/]:")
+    lines.append(f"{_I}[prog]{__prog__}[/] [metavar]\\[options][/] [arg]prompt...[/]")
+    if cmds:
+        lines.append(f"{_I}[prog]{__prog__}[/] [metavar]<command>[/] [metavar]\\[options][/]")
+    lines.append("")
+
+    lines.append("[help_title]Args[/]:")
+    lines.append(f"{_I}[arg]prompt[/]   Prompt to optimize")
+    lines.append("")
+
+    if cmds:
+        cmd_pad = max(len(n) for n, _ in cmds) + _LJUST_GAP
+        lines.append("[help_title]Commands[/]:")
+        for name, desc in cmds:
+            lines.append(f"{_I}[arg]{name}[/]{' ' * (cmd_pad - len(name))}[desc]{desc}[/]")
+        lines.append("")
+
+    lines.append("[help_title]Options[/]:")
+    lines.extend(o.help(lj) for o in opts)
+
+    cout("\n".join(lines), end="\n\n")
+    sys.exit(0)
+
+
+def pcmd_help(name: str, desc: str, *opts: Opt) -> None:
+    lines: list[str] = [desc, ""]
+
+    lines.append("[help_title]Usage[/]:")
+    lines.append(f"{_I}[prog]{__prog__}[/] [arg]{name}[/] [metavar]\\[options][/]")
+    lines.append("")
+
+    if opts:
+        lj = _ljust(opts)
+        lines.append("[help_title]Options[/]:")
+        lines.extend(o.help(lj) for o in opts)
+
+    cout("\n".join(lines), end="\n\n")
     sys.exit(0)
 
 
@@ -73,5 +106,5 @@ def pver() -> None:
     sys.exit(0)
 
 
-cout = CustomConsole(theme=_APP_THEME)
+cout = CustomConsole(theme=_APP_THEME, highlight=False)
 cerr = CustomErrConsole(theme=_APP_THEME)

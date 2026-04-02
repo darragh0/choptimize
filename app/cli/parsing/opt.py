@@ -50,11 +50,11 @@ class Opt:
             self.takes = None
 
     def help(self, ljust: Annotated[int, Ge(0)]) -> str:
-        short_len = len(self.short) + 2 if self.short else 0  # +2 for ", "
+        short_len = len(self.short) + 2 if self.short else 4  # 4 = width of "-x, "
         n_space = ljust - N_INDENT - short_len - len(self.long) - (len(self.takes) + 1 if self.takes is not None else 1)
 
         return (
-            f"{' ' * N_INDENT}"
+            f"{' ' * (N_INDENT + (0 if self.short else 4))}"
             f"{f'[arg]{self.short}[/], ' if self.short else ''}"
             f"[arg]{self.long}[/]"
             f"{f' {self.takes}' if self.takes is not None else ''}"

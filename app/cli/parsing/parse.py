@@ -46,7 +46,7 @@ def _expand_args(args: list[str], opt_map: dict[str, Opt]) -> list[str]:
     return expanded
 
 
-def parse(opts: tuple[Opt, ...], args: list[str]) -> SimpleNamespace:
+def parse(opts: tuple[Opt, ...], args: list[str], *, require_prompt: bool = True) -> SimpleNamespace:
     parsed, opt_map = _init_parsed(opts), _init_opt_map(opts)
     positionals: list[str] = []
     it = iter(_expand_args(args, opt_map))
@@ -75,9 +75,10 @@ def parse(opts: tuple[Opt, ...], args: list[str]) -> SimpleNamespace:
             pusage(hint=bool(positionals))
         else:
             positionals.append(arg)
-    if not positionals:
+    if not positionals and require_prompt:
         cerr("no prompt given")
         pusage()
         raise RuntimeError("unreachable")
-    parsed.prompt = " ".join(positionals)
+    if positionals:
+        parsed.prompt = " ".join(positionals)
     return parsed

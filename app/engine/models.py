@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from app.engine.types import ImprovesDim, Score, ScoreCont, TechniqueCat
+from app.engine.types import ImprovesDim, Score, ScoreCont, TechniqueCat  # noqa: TC001
 
 
 class Technique(BaseModel):

@@ -44,7 +44,7 @@ def optimize(
     *,
     improve: Annotated[bool, Form()] = False,
 ) -> HTMLResponse:
-    result = _get_engine().analyze(prompt, improve=improve)
+    result = _get_engine().analyze(prompt, improve=improve, show_raw=True)  # Show for debugging
     return templates.TemplateResponse(
         request,
         "partials/result.html",

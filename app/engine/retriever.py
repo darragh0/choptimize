@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
 import chromadb
+import transformers.utils.logging as tf_logging
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from common.utils.dataset import load_ds
 
@@ -61,10 +62,16 @@ class Retriever:
     _antipatterns_by_name: dict[str, Antipattern]
 
     def __init__(self, chroma_dir: Path = _CHROMA_DIR) -> None:
+        # Suppress noisy model-loading output (tqdm bar + LOAD REPORT)
+        prev_verbosity = tf_logging.get_verbosity()
+        tf_logging.set_verbosity_error()
+        tf_logging.disable_progress_bar()
         ef = cast(
             "EmbeddingFunction[Embeddable]",
             SentenceTransformerEmbeddingFunction(model_name=_EMBED_MODEL),
         )
+        tf_logging.set_verbosity(prev_verbosity)
+        tf_logging.enable_progress_bar()
         self._client = chromadb.PersistentClient(path=str(chroma_dir))
         self._prompts = self._client.get_or_create_collection("dataset_prompts", embedding_function=ef)
         self._techniques = self._client.get_or_create_collection("techniques", embedding_function=ef)

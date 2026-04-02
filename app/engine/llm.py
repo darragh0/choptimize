@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any
+from typing import Any, TypeVar
 
 from common.utils.console import cout
 from openai import OpenAI
@@ -54,15 +54,17 @@ class LLMClient:
             ),
         }
 
+    _M = TypeVar("_M", bound=BaseModel)
+
     def complete_json(
         self,
         system: str,
         user: str,
         *,
-        response_model: type[BaseModel],
+        response_model: type[_M],
         retries: int = 2,
         show_raw: bool = False,
-    ) -> dict[str, Any]:
+    ) -> _M:
         conv = _Conversation(system, user)
         config = self.config(response_model)
 
@@ -70,12 +72,11 @@ class LLMClient:
             raw = (
                 self._client.chat.completions.create(**config, messages=conv.messages).choices[0].message.content or ""
             )
-            if show_raw:
-                cout(f"Raw LLM response ({attempt}):")
-                cout(f"{raw}\n")
-
             try:
-                return json.loads(raw)
+                parsed = response_model.model_validate(json.loads(raw))
+                if show_raw:
+                    cout(f"LLM response ({parsed}):")
+                    cout(f"{parsed}\n")
             except json.JSONDecodeError as e:
                 if attempt < retries:
                     conv.llm(raw)
@@ -83,5 +84,7 @@ class LLMClient:
                     continue
                 msg = f"LLM returned invalid JSON after {retries + 1} attempts: {raw[:200]}"
                 raise ValueError(msg) from e
+            else:
+                return parsed
 
         raise ValueError("unreachable")

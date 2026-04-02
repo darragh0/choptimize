@@ -19,7 +19,7 @@ def cli() -> None:
         Opt(short="-v", long="--verbose", desc="Enable verbose output"),
         Opt(short="-i", long="--improve", desc="Generate an improved version of the prompt"),
         Opt(short="-m", long="--model", desc="LLM model name", takes=("model", str)),
-        Opt(short="-r", long="--raw", desc="Show raw LLM resposne"),
+        Opt(short="-r", long="--raw", desc="Show raw LLM response"),
         Opt(long="--llm-url", desc="LLM API base URL", takes=("url", str)),
         SpecialOpt(short="-w", long="--web", desc="Launch web server (ignores prompt arg)", triggers=_launch_web),
     )
@@ -28,7 +28,7 @@ def cli() -> None:
     prompt_clamped = f"{cfg.prompt}..." if len(cfg.prompt) > half_cols else cfg.prompt
 
     try:
-        with cout.status(f'Analyzing\n  [dim]>> [green]"{prompt_clamped}"[/][/]', spinner="line"):
+        with cout.status(f'Analyzing ([dim]"{prompt_clamped}"[/]', spinner="line"):
             from app.engine import Engine  # noqa: PLC0415
 
             engine = Engine(model=cfg.model, llm_url=cfg.llm_url)

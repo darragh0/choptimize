@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from app.engine.models import ImprovementChange, ImprovementResult
+from app.engine.models import ImprovementResult
 
 if TYPE_CHECKING:
     from app.engine.llm import LLMClient
@@ -75,8 +75,4 @@ def improve_prompt(
     show_raw: bool,
 ) -> ImprovementResult:
     context = _build_context(prompt, scores, techniques, similar)
-    raw = client.complete_json(_SYSTEM, context, response_model=ImprovementResult, show_raw=show_raw)
-    return ImprovementResult(
-        improved_prompt=raw["improved_prompt"],
-        changes=[ImprovementChange(**c) for c in raw["changes"]],
-    )
+    return client.complete_json(_SYSTEM, context, response_model=ImprovementResult, show_raw=show_raw)

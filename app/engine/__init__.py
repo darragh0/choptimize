@@ -24,21 +24,31 @@ class Engine:
         return self._retriever
 
     def analyze(self, prompt: str, *, improve: bool = False, show_raw: bool) -> AnalysisResult:
+        # Retrieval first — results feed into scorer
         with ThreadPoolExecutor(max_workers=3) as pool:
-            score_fut = pool.submit(score_prompt, self._llm, prompt, show_raw=show_raw)
             similar_fut = pool.submit(self.retriever.find_similar_prompts, prompt)
+            techniques_fut = pool.submit(self.retriever.find_techniques, prompt)
             antipattern_fut = pool.submit(self.retriever.detect_antipatterns, prompt)
 
-            scores = score_fut.result()
             similar = similar_fut.result()
+            techniques = techniques_fut.result()
             antipatterns = antipattern_fut.result()
 
-        weak_dims = [dim for dim in ("clarity", "specificity", "completeness") if getattr(scores, dim).score <= 3]
-        techniques = self.retriever.find_techniques(prompt, weak_dims)
+        # Score with RAG context for grounded feedback
+        scores = score_prompt(
+            self._llm,
+            prompt,
+            techniques=techniques,
+            similar=similar,
+            antipatterns=antipatterns,
+            show_raw=show_raw,
+        )
 
         improvement = None
         if improve:
-            improvement = improve_prompt(self._llm, prompt, scores, techniques, similar, show_raw=show_raw)
+            weak_dims = [dim for dim in ("clarity", "specificity", "completeness") if getattr(scores, dim).score <= 3]
+            weak_techniques = self.retriever.find_techniques(prompt, weak_dims)
+            improvement = improve_prompt(self._llm, prompt, scores, weak_techniques, similar, show_raw=show_raw)
 
         return AnalysisResult(
             scores=scores,

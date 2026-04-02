@@ -14,11 +14,11 @@ def _display_antipatterns(pats: list[Antipattern], *, verbose: bool) -> None:
     if pats:
         cout("\n[red]Detected Antipatterns[/]:")
         for ap in pats:
-            cout(f"  [red]✗[/] {ap.name}")
-            cout(f"    [dim]{ap.why_ineffective}[/]")
+            cout(f"  [red]✗[/] {ap.name}: [dim]{ap.why_ineffective}[/]")
             cout(f"    [green]Instead:[/] {ap.instead}")
             if verbose:
                 cout(f"    [dim]Evidence: {ap.evidence}[/]")
+                cout(f"    [dim]Misconception: {ap.misconception}[/]")
 
 
 def _display_techs(techs: list[Technique], *, verbose: bool) -> None:
@@ -26,9 +26,9 @@ def _display_techs(techs: list[Technique], *, verbose: bool) -> None:
         cout("\nSuggested Techniques:")
         for t in techs:
             dims = ", ".join(t.improves)
-            cout(f"  [green]•[/] {t.name} [dim](improves {dims})[/]")
+            cout(f"  [green]•[/] [bold]{t.name}[/] [dim](improves {dims})[/]")
+            cout(f"    {t.description}")
             if verbose:
-                cout(f"    [dim]{t.description}[/]")
                 cout(f"    [dim]Evidence: {t.evidence}[/]")
 
 
@@ -67,18 +67,17 @@ def score_bar(score: int, max_score: int = 5) -> str:
 
 
 def display_result(result: AnalysisResult, *, verbose: bool) -> None:
-    if result.scores.summary:
-        cout(f"{result.scores.summary}")
-
     cout("\nPrompt Quality Scores:")
     for dim in ("clarity", "specificity", "completeness"):
         ds = getattr(result.scores, dim)
         cout(f"  [dim]{dim:<15}[/] {score_bar(ds.score)}")
-        if verbose:
-            cout(f"  [dim]{' ' * 15} {ds.explanation}[/]")
+        cout(f"  {' ' * 15} [dim]{ds.explanation}[/]")
 
     overall = result.scores.overall
-    cout(f"\n  [green]{'overall':<15}[/] {overall:.1f} / 5.0")
+    cout(f"\n  [bold]{'overall':<15}[/] {overall:.1f} / 5.0")
+
+    if result.scores.summary:
+        cout(f"\n{result.scores.summary}")
 
     _display_antipatterns(result.detected_antipatterns, verbose=verbose)
     _display_techs(result.relevant_techniques, verbose=verbose)

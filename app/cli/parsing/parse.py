@@ -46,7 +46,7 @@ def _expand_args(args: list[str], opt_map: dict[str, Opt]) -> list[str]:
     return expanded
 
 
-def parse(opts: tuple[Opt, ...], args: list[str], *, require_prompt: bool = True) -> SimpleNamespace:
+def parse(opts: tuple[Opt, ...], args: list[str], *, require_prompt: bool = True) -> SimpleNamespace:  # noqa: C901
     parsed, opt_map = _init_parsed(opts), _init_opt_map(opts)
     positionals: list[str] = []
     it = iter(_expand_args(args, opt_map))
@@ -58,27 +58,43 @@ def parse(opts: tuple[Opt, ...], args: list[str], *, require_prompt: bool = True
 
         if opt := opt_map.get(arg):
             name = opt.long.lstrip("-").replace("-", "_")
+
             if opt.takes is not None:
                 if (raw := next(it, None)) is None:
-                    cerr(f"[arg]{arg}[/] requires [metavar]<{opt.takes.metavar}>[/]")
+                    cerr(f"[arg]{arg}[/]: requires [metavar]<{opt.takes.metavar}>[/]")
                     pusage()
                     raise RuntimeError("unreachable")
-                try:
-                    setattr(parsed, name, opt.takes.type(raw))
-                except (ValueError, TypeError):
-                    cerr(f"[arg]{arg}[/] expected [green]{opt.takes.type.__name__}[/], got {raw!r}")
-                    pusage()
+
+                if isinstance(opt.takes.type, tuple):
+                    if raw not in opt.takes.type:
+                        cerr(f"[arg]{arg}[/]: expected one of [metavar]{', '.join(opt.takes.type)}[/], got {raw!r}")
+                        pusage()
+                        continue
+                    setattr(parsed, name, raw)
+
+                else:
+                    try:
+                        setattr(parsed, name, opt.takes.type(raw))
+                    except (ValueError, TypeError):
+                        cerr(f"[arg]{arg}[/]: expected [green]{opt.takes.type.__name__}[/], got {raw!r}")
+                        pusage()
+
             else:
                 setattr(parsed, name, True)
+
         elif arg.startswith("-"):
             cerr(f"unknown option [arg]{arg}[/]")
             pusage(hint=bool(positionals))
+
         else:
             positionals.append(arg)
+
     if not positionals and require_prompt:
         cerr("no prompt given")
         pusage()
         raise RuntimeError("unreachable")
+
     if positionals:
         parsed.prompt = " ".join(positionals)
+
     return parsed

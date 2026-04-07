@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.engine.models import DimensionScore, ScoreResult
+from app.engine.models import ScoreResult
+from app.engine.types import CODE_DIMS, PROMPT_DIMS  # noqa: TC001
 
 if TYPE_CHECKING:
     from app.engine.llm import LLMClient
@@ -32,15 +33,24 @@ def _build_system_prompt() -> str:
     parts.append(
         "\nYou will receive the prompt to evaluate along with grounding context: "
         "similar prompts from a scored dataset (use as calibration anchors), "
-        "relevant prompt engineering techniques, and detected antipatterns."
+        "relevant prompt engineering techniques, and detected antipatterns. "
+        "Each similar prompt includes both prompt quality scores AND code quality outcomes "
+        "(correctness, robustness, readability, efficiency) showing what code quality "
+        "resulted from that prompt."
     )
     parts.append(
-        "\nFor each dimension's explanation: reference specific aspects of the prompt, "
-        "mention relevant techniques the user could apply, and flag any antipatterns detected."
+        "\nFor each dimension's explanation: write ONE concise sentence (under 20 words) "
+        "identifying the key issue or strength. Do not elaborate or suggest fixes — the summary handles that."
     )
     parts.append(
         "\nFor the summary: give 2-3 concrete, actionable tips to improve the prompt. "
         "Don't just say what's wrong — say what to do about it."
+    )
+    parts.append(
+        "\nFor code_quality_outlook: based on the code quality outcomes of the similar prompts, "
+        "write 1-2 sentences predicting what code quality the user can expect from their prompt. "
+        "Reference specific dimensions (e.g. 'similar prompts produced code with low correctness'). "
+        "If no similar prompts are available, leave this field empty."
     )
     parts.append("\nRespond with ONLY valid JSON matching the provided schema.")
 
@@ -61,9 +71,24 @@ def _build_user_message(
     if similar:
         sim_lines = []
         for s in similar:
-            scores_str = ", ".join(f"{k}={v}" for k, v in s.scores.items())
-            sim_lines.append(f"- [{scores_str}]: {s.prompt[:200]}")
+            p_scores = ", ".join(f"{k}={v}" for k, v in s.scores.items() if k in PROMPT_DIMS)
+            c_scores = ", ".join(f"{k}={v}" for k, v in s.scores.items() if k in CODE_DIMS)
+            sim_lines.append(f"- [prompt: {p_scores} | code: {c_scores}]: {s.prompt[:200]}")
+
+        code_avgs: dict[str, float] = {}
+        for dim in CODE_DIMS:
+            vals = [s.scores[dim] for s in similar if dim in s.scores]
+            if vals:
+                code_avgs[dim] = sum(vals) / len(vals)
+        avg_str = ", ".join(f"{k}={v:.1f}" for k, v in code_avgs.items())
+
         parts.append(f"<SIMILAR_SCORED_PROMPTS>\n{chr(10).join(sim_lines)}\n</SIMILAR_SCORED_PROMPTS>")
+        if avg_str:
+            parts.append(
+                "<CODE_QUALITY_OUTLOOK_DATA>\n"
+                f"Average code quality from similar prompts: {avg_str}\n"
+                "</CODE_QUALITY_OUTLOOK_DATA>"
+            )
 
     if techniques:
         tech_lines = [f"- {t.name}: {t.description}" for t in techniques]
@@ -87,9 +112,3 @@ def score_prompt(
 ) -> ScoreResult:
     user_msg = _build_user_message(prompt, techniques, similar, antipatterns)
     return client.complete_json(_SYSTEM, user_msg, response_model=ScoreResult, show_raw=show_raw)
-    return ScoreResult(
-        clarity=DimensionScore(**raw["clarity"]),
-        specificity=DimensionScore(**raw["specificity"]),
-        completeness=DimensionScore(**raw["completeness"]),
-        summary=raw.get("summary", ""),
-    )

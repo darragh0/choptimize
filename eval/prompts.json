@@ -1,0 +1,77 @@
+[
+  {
+    "id": 1,
+    "expected_quality": "very_low",
+    "prompt": "make a function",
+    "source": "synthetic"
+  },
+  {
+    "id": 2,
+    "expected_quality": "very_low",
+    "prompt": "python sort thing",
+    "source": "synthetic"
+  },
+  {
+    "id": 3,
+    "expected_quality": "low",
+    "dataset_scores": { "clarity": 2, "specificity": 1, "completeness": 1 },
+    "prompt": "I need a code to draw my picture accurately by using any easy programming language",
+    "source": "dataset"
+  },
+  {
+    "id": 4,
+    "expected_quality": "low",
+    "prompt": "write me a python class that handles users",
+    "source": "synthetic"
+  },
+  {
+    "id": 5,
+    "expected_quality": "low_medium",
+    "prompt": "give me a python generator that yields new dataclass instances of a new User dataclass",
+    "source": "synthetic"
+  },
+  {
+    "id": 6,
+    "expected_quality": "medium",
+    "dataset_scores": { "clarity": 3, "specificity": 3, "completeness": 3 },
+    "prompt": "I writing a python program, I'm using sqlalchemy. I'd like to ask is it alright to use two nested try-excepts when it comes to software principals?",
+    "source": "dataset"
+  },
+  {
+    "id": 7,
+    "expected_quality": "medium",
+    "prompt": "Write a Python function called `retry` that takes a callable and retries it up to 3 times if it raises an exception, with a 1-second delay between attempts.",
+    "source": "synthetic"
+  },
+  {
+    "id": 8,
+    "expected_quality": "medium",
+    "prompt": "Create a Python class `LRUCache` that supports get and put operations with O(1) time complexity. Use a dictionary and a doubly linked list.",
+    "source": "synthetic"
+  },
+  {
+    "id": 9,
+    "expected_quality": "medium_high",
+    "prompt": "Write a Python function that takes a nested dictionary of arbitrary depth and flattens it into a single-level dictionary where keys are dot-separated paths. For example, `{'a': {'b': 1, 'c': {'d': 2}}}` becomes `{'a.b': 1, 'a.c.d': 2}`. Lists should be left as-is (not flattened). Type hint the function properly.",
+    "source": "synthetic"
+  },
+  {
+    "id": 10,
+    "expected_quality": "high",
+    "dataset_scores": { "clarity": 5, "specificity": 4, "completeness": 5 },
+    "prompt": "Build a GUI program based on tksheet that allows the creation of tables and editing of tables to save large amount of data. The data should be saved automatically. Use python 3.12 and modern features.",
+    "source": "dataset"
+  },
+  {
+    "id": 11,
+    "expected_quality": "high",
+    "prompt": "Write a Python function `parse_csv_stream(stream: IO[str], delimiter: str = ',') -> Iterator[dict[str, str]]` that lazily parses a CSV input stream, yielding one row at a time as a dict mapping column headers (from the first row) to values. Handle quoted fields containing the delimiter. Raise `ValueError` if any row has a different number of fields than the header.",
+    "source": "synthetic"
+  },
+  {
+    "id": 12,
+    "expected_quality": "very_high",
+    "prompt": "Write a Python async context manager `class ConnectionPool` that manages a pool of database connections. Constructor takes `dsn: str`, `min_size: int = 2`, `max_size: int = 10`. On `async with pool.acquire() as conn:` it should: (1) return an idle connection if available, (2) create a new one if below max_size, or (3) await until one is released. Use `asyncio.Condition` for waiting. Connections should implement a `Connection` protocol with `async execute(query: str, params: tuple[Any, ...] = ()) -> list[Row]` and `async close() -> None`. On pool `__aexit__`, close all connections. Handle the case where a connection becomes stale (idle > 60s) by discarding and creating fresh on acquire.",
+    "source": "synthetic"
+  }
+]

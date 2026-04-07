@@ -9,12 +9,17 @@ wheels/
 # Virtual environments
 .venv
 
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+
 # Data
 data/
 
 # Misc
 /*.md
+!README.md
+!PROGRESS.md
+!CLAUDE.md
 notes.txt
-notes
 issues.txt
-docs/

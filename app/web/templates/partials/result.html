@@ -1,3 +1,4 @@
+<!-- Prompt + Scores card -->
 <div class="result-card">
   <p class="result-label">Prompt analysed</p>
   <blockquote class="result-prompt">{{ prompt }}</blockquote>
@@ -22,40 +23,55 @@
   {% if result.scores.summary %}
   <p class="score-summary">{{ result.scores.summary }}</p>
   {% endif %}
+</div>
 
-  {% if result.detected_antipatterns %}
-  <div class="antipatterns-section">
-    <h3>Detected Antipatterns</h3>
-    <ul class="antipattern-list">
-      {% for ap in result.detected_antipatterns %}
-      <li class="antipattern-item">
-        <strong>{{ ap.name }}</strong>
-        <p class="antipattern-why">{{ ap.why_ineffective }}</p>
-        <p class="antipattern-instead"><strong>Instead:</strong> {{ ap.instead }}</p>
-        <p class="antipattern-evidence">{{ ap.evidence }}</p>
-      </li>
-      {% endfor %}
-    </ul>
+<!-- Code Quality Outlook -->
+{% if result.scores.code_quality_outlook %}
+<div class="result-card">
+  <div class="code-outlook">
+    <h3>Code Quality Outlook</h3>
+    <p>{{ result.scores.code_quality_outlook }}</p>
   </div>
-  {% endif %}
+</div>
+{% endif %}
 
-  {% if result.relevant_techniques %}
-  <div class="techniques-section">
-    <h3>Suggested Techniques</h3>
-    <ul class="technique-list">
-      {% for t in result.relevant_techniques %}
-      <li>
-        <strong>{{ t.name }}</strong>
-        <span class="dims-tag">improves {{ t.improves | join(', ') }}</span>
-        <p class="technique-desc">{{ t.description }}</p>
-        <p class="technique-evidence">{{ t.evidence }}</p>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
+<!-- Detected Antipatterns -->
+{% if result.detected_antipatterns %}
+<div class="result-card">
+  <h3>Detected Antipatterns</h3>
+  <ul class="antipattern-list">
+    {% for ap in result.detected_antipatterns %}
+    <li class="antipattern-item">
+      <strong>{{ ap.name }}</strong>
+      <p class="antipattern-why">{{ ap.why_ineffective }}</p>
+      <p class="antipattern-instead"><strong>Instead:</strong> {{ ap.instead }}</p>
+      <p class="antipattern-evidence">{{ ap.evidence }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
 
-  {% if result.improvement %}
+<!-- Suggested Techniques -->
+{% if result.relevant_techniques %}
+<div class="result-card">
+  <h3>Suggested Techniques</h3>
+  <ul class="technique-list">
+    {% for t in result.relevant_techniques %}
+    <li>
+      <strong>{{ t.name }}</strong>
+      <span class="dims-tag">improves {{ t.improves | join(', ') }}</span>
+      <p class="technique-desc">{{ t.description }}</p>
+      <p class="technique-evidence">{{ t.evidence }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- Improved Prompt -->
+{% if result.improvement %}
+<div class="result-card">
   <div class="improvement-section">
     <h3>Improved Prompt</h3>
     <blockquote class="improved-prompt">{{ result.improvement.improved_prompt }}</blockquote>
@@ -65,5 +81,5 @@
     </p>
     {% endfor %}
   </div>
-  {% endif %}
 </div>
+{% endif %}

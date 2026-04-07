@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, LiteralString
 
 from annotated_types import Ge
 
@@ -10,13 +10,14 @@ from app.cli.parsing.display import N_INDENT
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-type AllowedOptType = type[str | int | float]
+type StringChoices = tuple[LiteralString, ...]
+type AllowedOptType = type[str | int | float] | StringChoices
 
 
 @dataclass
 class _OptValue:
     metavar: str
-    type: AllowedOptType
+    type: AllowedOptType | StringChoices
 
     def __str__(self) -> str:
         return f"[metavar]<{self.metavar}>[/]"
@@ -42,10 +43,10 @@ class Opt:
         self.long = long
         self.desc = desc
 
-        if isinstance(takes, tuple):
-            self.takes = _OptValue(*takes)
-        elif takes is not None:
+        if isinstance(takes, type):
             self.takes = _OptValue(takes.__name__, takes)
+        elif isinstance(takes, tuple):
+            self.takes = _OptValue(*takes)
         else:
             self.takes = None
 

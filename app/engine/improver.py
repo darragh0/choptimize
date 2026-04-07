@@ -27,6 +27,10 @@ Given the inputs, rewrite the prompt to improve weak dimensions. \
 Apply the provided techniques. \
 Explain each change you made and which technique you applied.
 
+IMPORTANT: The improved_prompt field must be plain text only — no markdown formatting, \
+no headers, no bullet points, no code fences. Write it exactly as a developer would \
+type it into an LLM chat box.
+
 Respond with ONLY valid JSON matching the provided schema.
 </instructions>
 </task>\
@@ -60,7 +64,7 @@ def _build_context(
         for s in similar:
             scores_str = ", ".join(f"{k}={v}" for k, v in s.scores.items())
             sim_lines.append(f"- [{scores_str}]: {s.prompt[:simprompt_cutoff]}")
-        parts.append(f"<SIMILAR_PROPMTS_FROM_DATASET>{'\n'.join(sim_lines)}</SIMILAR_PROMPTS_FROM_DATASET>")
+        parts.append(f"<SIMILAR_PROMPTS_FROM_DATASET>{'\n'.join(sim_lines)}</SIMILAR_PROMPTS_FROM_DATASET>")
 
     return "\n".join(parts)
 

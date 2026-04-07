@@ -13,42 +13,99 @@
 
 <body>
   <main>
-    <header>
-      <h1>Chop<span>timize</span></h1>
-      <p class="tagline">Analyse & optimize the quality of your LLM prompt.</p>
-    </header>
-
-    <section class="prompt-area">
-      <form
-        hx-post="/optimize"
-        hx-target="#result"
-        hx-swap="innerHTML"
-        hx-indicator="#loader"
-        hx-disabled-elt="button[type='submit']"
-      >
-        <textarea
-          name="prompt"
-          placeholder="Paste or type a prompt here…"
-          required
-          autocomplete="off"
-          spellcheck="false"
-        ></textarea>
-        <div class="form-footer">
-          <label class="improve-toggle">
-            <input type="checkbox" name="improve" value="true" />
-            <span>Generate improved prompt</span>
-          </label>
-          <div id="loader" class="loader" aria-label="Optimising…">
-            <span></span><span></span><span></span>
+    <div class="columns">
+      <section class="col-left prompt-area">
+        <header>
+          <h1>Chop<span>timize</span></h1>
+          <p class="tagline">Analyse & optimize the quality of your LLM prompt.</p>
+        </header>
+        <form
+          hx-post="/optimize"
+          hx-target="#result"
+          hx-swap="innerHTML"
+          hx-indicator="#loader"
+          hx-disabled-elt="button[type='submit']"
+        >
+          <textarea
+            name="prompt"
+            placeholder="Paste or type a prompt here…"
+            required
+            autocomplete="off"
+            spellcheck="false"
+          ></textarea>
+          <div class="form-options">
+            <select name="service" aria-label="LLM service">
+              <option value="ollama" selected>Ollama (local)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+            </select>
+            <select name="model" id="model-select" aria-label="Model">
+              <option value="">Loading models…</option>
+            </select>
+            <input type="text" name="api_key" placeholder="API key (optional)" aria-label="API key" autocomplete="off" class="api-key-input" />
           </div>
-          <button type="submit">Optimize</button>
-        </div>
-      </form>
-    </section>
+          <div class="form-footer">
+            <label class="improve-toggle">
+              <input type="checkbox" name="improve" value="true" />
+              <span>Generate improved prompt</span>
+            </label>
+            <div id="loader" class="loader" aria-label="Optimising…">
+              <span></span><span></span><span></span>
+            </div>
+            <button type="submit">Optimize</button>
+          </div>
+        </form>
+      </section>
 
-    <section id="result" aria-live="polite"></section>
+      <section id="result" class="col-right" aria-live="polite"></section>
+    </div>
   </main>
 
   <footer>Choptimize &mdash; Research tool</footer>
+
+  <script>
+    const serviceEl = document.querySelector('[name="service"]');
+    const keyEl = document.querySelector('[name="api_key"]');
+    const modelEl = document.getElementById('model-select');
+    let debounce;
+
+    function fetchModels() {
+      clearTimeout(debounce);
+      debounce = setTimeout(async () => {
+        const svc = serviceEl.value;
+        const key = keyEl.value;
+        if (svc !== 'ollama' && !key) {
+          modelEl.innerHTML = '<option value="">Enter API key…</option>';
+          return;
+        }
+        modelEl.innerHTML = '<option value="">Loading…</option>';
+        try {
+          const res = await fetch(`/models?service=${svc}&api_key=${encodeURIComponent(key)}`);
+          const data = await res.json();
+          if (data.error) {
+            modelEl.innerHTML = `<option value="">${data.error}</option>`;
+            return;
+          }
+          modelEl.innerHTML = data.models
+            .map((m, i) => `<option value="${m}"${i === 0 ? ' selected' : ''}>${m}</option>`)
+            .join('');
+        } catch {
+          modelEl.innerHTML = '<option value="">Could not load models</option>';
+        }
+      }, 300);
+    }
+
+    serviceEl.addEventListener('change', fetchModels);
+    keyEl.addEventListener('input', fetchModels);
+    fetchModels();
+
+    // Switch to two-column layout once results appear
+    const cols = document.querySelector('.columns');
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+      if (e.detail.target.id === 'result') {
+        cols.classList.toggle('has-result', e.detail.target.children.length > 0);
+      }
+    });
+  </script>
 </body>
 </html>

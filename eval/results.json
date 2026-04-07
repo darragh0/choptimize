@@ -1,0 +1,590 @@
+[
+  {
+    "id": 1,
+    "expected_quality": "very_low",
+    "prompt": "make a function",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 1,
+      "specificity": 1,
+      "completeness": 1,
+      "overall": 1.0
+    },
+    "explanations": {
+      "clarity": "The prompt is ambiguous as it does not specify what the function should do or its purpose.",
+      "specificity": "The prompt is entirely generic, lacking any details like language, types, or desired behavior.",
+      "completeness": "Critical context is missing, forcing the LLM to invent the entire problem domain and function requirements."
+    },
+    "code_quality_outlook": "Similar prompts, though more detailed, produced code with moderate robustness and efficiency. This prompt, being extremely generic, will likely result in code with very low correctness and robustness, as the LLM has no defined task.",
+    "summary": "To improve this prompt, clearly state the function's intended purpose, specifying what it should accomplish. Define the expected inputs and their types, and also specify the desired output or return value. Consider providing the programming language and any relevant constraints.",
+    "antipatterns": [],
+    "techniques": [
+      "Output Format Specification",
+      "Few-Shot Prompting",
+      "Test-Driven Prompting"
+    ],
+    "improved_prompt": "Create a Python function.\n\nRequirements:\n1.  Function Name: add_numbers\n2.  Purpose: Calculate the sum of two input values.\n3.  Inputs:\n    *   Two parameters, a and b.\n    *   Both a and b must be integers or floats.\n4.  Output:\n    *   Return the sum of a and b.\n    *   The return type should be an integer if both inputs are integers, otherwise a float.\n5.  Error Handling:\n    *   If either a or b is not an integer or float, raise a TypeError with a descriptive message: \"Inputs must be numeric (int or float).\"\n6.  Documentation:\n    *   Include a comprehensive docstring (PEP 257 standard) detailing the function's purpose, parameters (with types and descriptions), return value (with type and description), and potential errors.\n\nProvide only the Python code for the function, enclosed in a single code block.",
+    "improvement_changes": [
+      {
+        "dimension": "clarity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      }
+    ],
+    "elapsed_s": 18.03
+  },
+  {
+    "id": 2,
+    "expected_quality": "very_low",
+    "prompt": "python sort thing",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 1,
+      "specificity": 1,
+      "completeness": 1,
+      "overall": 1.0
+    },
+    "explanations": {
+      "clarity": "The term \"thing\" is undefined, leading to multiple valid interpretations of the sorting task.",
+      "specificity": "Only the language \"python\" is mentioned, with no details on inputs, outputs, or sorting criteria.",
+      "completeness": "Critical context about the data structure to be sorted and the sorting criteria is entirely missing."
+    },
+    "code_quality_outlook": "Similar, slightly more detailed prompts achieved average correctness, but this prompt's extreme lack of specificity suggests it will yield code with very low correctness and robustness. The LLM will likely guess wrong about the user's intent.",
+    "summary": "To improve this prompt, specify the exact data structure to be sorted (e.g., list of numbers, dictionary, custom objects). Clearly define the sorting criteria (e.g., ascending, by a specific key, custom comparison). Provide an example input and desired output to make the task explicit.",
+    "antipatterns": [],
+    "techniques": [
+      "Decomposition Prompting",
+      "Constraint Enumeration",
+      "Output Format Specification"
+    ],
+    "improved_prompt": "Write a Python function named 'sort_people_by_age'. This function should take a list of dictionaries as input, where each dictionary represents a person and contains 'name' (string) and 'age' (integer) keys. The function should return a new list of dictionaries, sorted in ascending order by the 'age' key. Here's an example input list: [{'name': 'Alice', 'age': 30}, {'name': 'Bob', 'age': 25}, {'name': 'Charlie', 'age': 35}]. The expected output is: [{'name': 'Bob', 'age': 25}, {'name': 'Alice', 'age': 30}, {'name': 'Charlie', 'age': 35}].",
+    "improvement_changes": [
+      {
+        "dimension": "Clarity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "Specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "Completeness",
+        "technique": "Output Format Specification"
+      }
+    ],
+    "elapsed_s": 13.43
+  },
+  {
+    "id": 3,
+    "expected_quality": "low",
+    "prompt": "I need a code to draw my picture accurately by using any easy programming language",
+    "source": "dataset",
+    "dataset_scores": {
+      "clarity": 2,
+      "specificity": 1,
+      "completeness": 1
+    },
+    "scores": {
+      "clarity": 1,
+      "specificity": 1,
+      "completeness": 1,
+      "overall": 1.0
+    },
+    "explanations": {
+      "clarity": "Multiple valid interpretations exist for \"draw my picture accurately\" and \"my picture\" itself.",
+      "specificity": "No input types, output formats, constraints, or technical details are specified.",
+      "completeness": "Critical context is missing, forcing the LLM to invent the picture's source, format, and accuracy criteria."
+    },
+    "code_quality_outlook": "Based on identical and similar prompts, the generated code will likely have low correctness and robustness due to the severe lack of specificity and clarity.",
+    "summary": "The prompt is extremely vague; it lacks details about the input 'picture,' the desired output, or the meaning of 'accurately.' To improve, specify the input source (e.g., file path, description) and the expected output format (e.g., GUI, image file). Also, define what 'accurately' means in this context and specify a programming language.",
+    "antipatterns": [],
+    "techniques": [
+      "Few-Shot Prompting",
+      "Output Format Specification",
+      "Test-Driven Prompting"
+    ],
+    "improved_prompt": "Generate a Python script to draw geometric shapes based on a list of shape definitions.Input Data Format: Your picture will be provided as a Python list of dictionaries. Each dictionary represents a shape and will contain a 'shape' key (e.g., 'circle', 'rectangle', 'line') and other keys for its properties (e.g., 'center', 'radius', 'bottom_left', 'width', 'height', 'start_point', 'end_point', 'color').Output Code Format:1. The code must be a complete, runnable Python script.2. It must use the turtle graphics library.3. It should include a main function draw_shapes(shapes_data_list) that iterates through the shapes_data_list and draws each shape.4. Include necessary imports and a if __name__ == '__main__': block to demonstrate how to call draw_shapes with example data.5. Include comments to explain complex parts.Constraints:- The drawing must accurately reflect the coordinates, dimensions, and colors provided in the input data.- The script should handle at least 'circle', 'rectangle', and 'line' shapes.- The origin (0,0) for turtle is the center of the screen.Here is an example of desired input-output:Input:[{'shape': 'circle', 'center': (0, 0), 'radius': 50, 'color': 'blue'}]Output:import turtle\\n\\ndef draw_shapes(shapes_data_list):\\n    screen = turtle.Screen()\\n    screen.setup(width=600, height=400)\\n    screen.tracer(0) # Turn off screen updates for faster drawing\\n\\n    for shape_info in shapes_data_list:\\n        shape_type = shape_info['shape']\\n        color = shape_info.get('color', 'black')\\n        turtle.pencolor(color)\\n        turtle.fillcolor(color)\\n        turtle.penup()\\n\\n        if shape_type == 'circle':\\n            center_x, center_y = shape_info['center']\\n            radius = shape_info['radius']\\n            turtle.goto(center_x, center_y - radius) # Adjust for turtle's circle drawing\\n            turtle.pendown()\\n            turtle.circle(radius)\\n        # Add logic for other shapes like rectangle, line here...\\n\\n    screen.update() # Update screen once\\n    screen.mainloop()\\n\\nif __name__ == '__main__':\\n    example_shapes = [{'shape': 'circle', 'center': (0, 0), 'radius': 50, 'color': 'blue'}]\\n    draw_shapes(example_shapes)",
+    "improvement_changes": [
+      {
+        "dimension": "clarity",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "clarity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Output Format Specification"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Output Format Specification"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      }
+    ],
+    "elapsed_s": 34.39
+  },
+  {
+    "id": 4,
+    "expected_quality": "low",
+    "prompt": "write me a python class that handles users",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 1,
+      "specificity": 1,
+      "completeness": 1,
+      "overall": 1.0
+    },
+    "explanations": {
+      "clarity": "The phrase 'handles users' is extremely ambiguous, leading to multiple valid interpretations of the desired functionality.",
+      "specificity": "No concrete details are provided beyond 'python class' and 'users'; input/output types, methods, or constraints are missing.",
+      "completeness": "Critical context regarding what 'handles users' entails is entirely missing, forcing the LLM to invent core requirements."
+    },
+    "code_quality_outlook": "Similar prompts resulted in code with low correctness and robustness. Given the extreme lack of detail in this prompt, expect code that is likely incorrect for any real-world use case and lacks essential robustness.",
+    "summary": "To improve this prompt, specify the desired attributes for a user (e.g., username, email, password). Clearly define the methods the class should have (e.g., `create_user`, `get_user`, `authenticate`). Indicate how users should be stored or managed (e.g., in-memory list, simple file, database connection).",
+    "antipatterns": [],
+    "techniques": [
+      "Test-Driven Prompting",
+      "Error Handling Specification",
+      "Language and Framework Specification"
+    ],
+    "improved_prompt": "Write a Python class named UserManager that manages user data. The class should store user information in an internal dictionary where keys are usernames and values are dictionaries containing user details (at least 'username' and 'email'). The class must include the following methods: 1. add_user(username: str, email: str) -> bool: Adds a new user to the system. Returns True if the user was successfully added (i.e., the username did not already exist), and False otherwise. 2. get_user(username: str) -> dict | None: Retrieves a user's details. Returns a dictionary {'username': '...', 'email': '...'} if the user exists, and None if no user with the given username is found. 3. user_exists(username: str) -> bool: Checks if a user with the given username already exists in the system. Returns True if the user exists, False otherwise. Ensure the class includes appropriate type hints for all parameters and return values, and docstrings for the class and each method explaining its purpose, parameters, and return value. The generated code must pass the following test cases: manager = UserManager() assert manager.add_user(\"alice\", \"alice@example.com\") is True assert manager.get_user(\"alice\") == {\"username\": \"alice\", \"email\": \"alice@example.com\"} assert manager.add_user(\"alice\", \"alice_new@example.com\") is False # Username already exists assert manager.user_exists(\"alice\") is True assert manager.get_user(\"bob\") is None assert manager.user_exists(\"bob\") is False assert manager.add_user(\"bob\", \"bob@example.com\") is True assert manager.user_exists(\"bob\") is True",
+    "improvement_changes": [
+      {
+        "dimension": "clarity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Output Format Specification"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Test-Driven Prompting"
+      }
+    ],
+    "elapsed_s": 15.42
+  },
+  {
+    "id": 5,
+    "expected_quality": "low_medium",
+    "prompt": "give me a python generator that yields new dataclass instances of a new User dataclass",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 2,
+      "specificity": 2,
+      "completeness": 1,
+      "overall": 1.67
+    },
+    "explanations": {
+      "clarity": "The prompt is vague about what constitutes a 'User' and what 'new' instances should contain.",
+      "specificity": "It mentions Python and specific components but lacks details about dataclass fields, data generation, or quantity.",
+      "completeness": "Critical context is missing as the prompt requires the LLM to invent the User dataclass structure and generation logic."
+    },
+    "code_quality_outlook": "Similar prompts produced code with average correctness (4.0) and robustness (3.0), but this prompt's severe lack of specificity will likely lead to lower correctness and robustness as the LLM must invent the core data model and generation logic.",
+    "summary": "To improve this prompt, define the fields and types for the `User` dataclass and specify the logic for generating new instances, such as using random data or a sequence. Additionally, add constraints for the generator, like the number of instances to yield or a stopping condition.",
+    "antipatterns": [],
+    "techniques": [
+      "Test-Driven Prompting",
+      "Template Pattern",
+      "Few-Shot Prompting"
+    ],
+    "improved_prompt": "Write a Python script that defines a User dataclass and a generator function generate_users. The User dataclass must have the following fields: - id: int - name: str - email: str. The generate_users function should be a generator that yields unique instances of the User dataclass. It should take an argument num_users: int specifying how many User instances to generate. For each generated user: - id should be a unique, sequentially incrementing integer starting from 1. - name should be a string in the format \"User{id}\". - email should be a string in the format \"user{id}@example.com\". The output should be a complete, runnable Python script including the User dataclass definition and the generate_users function. Include the following test case at the end of the script to verify the generator's behavior: import dataclasses; from typing import Generator; user_generator = generate_users(num_users=3); users = list(user_generator); assert len(users) == 3; assert all(isinstance(user, User) for user in users); assert users[0] == User(id=1, name='User1', email='user1@example.com'); assert users[1] == User(id=2, name='User2', email='user2@example.com'); assert users[2] == User(id=3, name='User3', email='user3@example.com'); print(users).",
+    "improvement_changes": [
+      {
+        "dimension": "clarity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Test-Driven Prompting"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Output Format Specification"
+      }
+    ],
+    "elapsed_s": 20.94
+  },
+  {
+    "id": 6,
+    "expected_quality": "medium",
+    "prompt": "I writing a python program, I'm using sqlalchemy. I'd like to ask is it alright to use two nested try-excepts when it comes to software principals?",
+    "source": "dataset",
+    "dataset_scores": {
+      "clarity": 3,
+      "specificity": 3,
+      "completeness": 3
+    },
+    "scores": {
+      "clarity": 1,
+      "specificity": 1,
+      "completeness": 1,
+      "overall": 1.0
+    },
+    "explanations": {
+      "clarity": "The phrase 'software principals' is vague, making the question's intent ambiguous without further context.",
+      "specificity": "The prompt asks a generic architectural question without any concrete code, use case, or specific constraints.",
+      "completeness": "It lacks critical context regarding the specific problem or scenario where nested try-excepts are being considered."
+    },
+    "code_quality_outlook": "The identical similar prompt produced code/advice with moderate correctness and robustness, suggesting the LLM might provide a somewhat generalized but not fully robust answer without specific context.",
+    "summary": "To improve this prompt, provide the specific code snippet or scenario where nested try-excepts are being considered. Clearly state the problem you are trying to solve with this error handling. Define what 'software principals' you are concerned about.",
+    "antipatterns": [],
+    "techniques": [
+      "Error Handling Specification",
+      "Negative Prompting",
+      "Test-Driven Prompting"
+    ],
+    "improved_prompt": "I'm developing a Python application with SQLAlchemy and need advice on error handling. I'm considering using two nested try-except blocks for a specific operation. From a software design perspective, is this an acceptable pattern? To help me, please provide the following details: 1. Scenario Description: Explain the specific use case or operation where you are considering nested try-except blocks. What problem are you trying to solve with this structure? 2. Code Snippet: Provide a simplified example of the nested try-except code structure you're considering. Indicate the types of exceptions you plan to catch at each level and the intended actions within each except block. 3. Concerns: What specific software principles or design considerations (e.g., maintainability, readability, transaction atomicity, resource management, specific SQLAlchemy patterns) are you concerned about or aiming to uphold?",
+    "improvement_changes": [
+      {
+        "dimension": "Clarity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "Specificity",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "Completeness",
+        "technique": "Error Handling Specification"
+      },
+      {
+        "dimension": "Completeness",
+        "technique": "Specification Pattern"
+      }
+    ],
+    "elapsed_s": 18.23
+  },
+  {
+    "id": 7,
+    "expected_quality": "medium",
+    "prompt": "Write a Python function called `retry` that takes a callable and retries it up to 3 times if it raises an exception, with a 1-second delay between attempts.",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 5,
+      "specificity": 3,
+      "completeness": 3,
+      "overall": 3.67
+    },
+    "explanations": {
+      "clarity": "The prompt is unambiguous, precisely detailing the function name, input, retry count, delay, and retry condition.",
+      "specificity": "It specifies the language, core logic, and delay but omits return type, argument handling for the callable, and specific exception types.",
+      "completeness": "The core task is present, but crucial context like handling arguments for the callable or behavior after final failure is missing."
+    },
+    "code_quality_outlook": "Based on similar prompts, the generated code will likely implement the basic retry logic and delay with average correctness. However, it will likely exhibit low robustness due to unspecified exception handling and final failure behavior.",
+    "summary": "To improve this prompt, specify the function's return value for both success and failure scenarios after retries. Define how the `retry` function should accept and pass arguments to the `callable`. Clarify if all exceptions should trigger a retry or if specific types are expected.",
+    "antipatterns": [],
+    "techniques": [
+      "Error Handling Specification",
+      "Negative Prompting",
+      "Decomposition Prompting"
+    ],
+    "improved_prompt": "Write a Python function named retry.The function should adhere to the following requirements:1.  Signature: Accept a callable func, any positional arguments *args, and keyword arguments **kwargs to pass to func. Also accept max_retries (integer, default 3), delay_seconds (integer/float, default 1), and exceptions_to_catch (tuple of exception types, default (Exception,)).2.  Execution: Call func with the provided *args and **kwargs.3.  Retry Logic: If func raises an exception that is an instance of exceptions_to_catch, it should retry the call. It must attempt the call up to max_retries times.4.  Delay: Introduce a delay_seconds pause between each retry attempt.5.  Return Value: If func completes successfully on any attempt, return its result immediately.6.  Failure Handling: If func fails to execute successfully after max_retries attempts, re-raise the last exception that was caught.",
+    "improvement_changes": [
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Error Handling Specification"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Error Handling Specification"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      }
+    ],
+    "elapsed_s": 15.76
+  },
+  {
+    "id": 8,
+    "expected_quality": "medium",
+    "prompt": "Create a Python class `LRUCache` that supports get and put operations with O(1) time complexity. Use a dictionary and a doubly linked list.",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 3,
+      "specificity": 3,
+      "completeness": 2,
+      "overall": 2.67
+    },
+    "explanations": {
+      "clarity": "The core intent is understandable, but method signatures and cache capacity are undefined.",
+      "specificity": "Language, class name, operations, and time complexity are given, but crucial API details like capacity and method signatures are missing.",
+      "completeness": "Major gaps exist regarding the core definition and behavior of an LRU cache, specifically its capacity and method signatures."
+    },
+    "code_quality_outlook": "Based on similar prompts with comparable levels of detail, the generated code will likely have average correctness and robustness, possibly failing on edge cases not explicitly defined. Efficiency might be met due to the explicit O(1) constraint.",
+    "summary": "The prompt clearly identifies the class name and required operations with a performance constraint. However, it significantly lacks details crucial for a complete and correct implementation of an LRU cache. To improve, explicitly define the cache's capacity and the exact method signatures, including return values and behavior for cache misses or when the cache is full.",
+    "antipatterns": [],
+    "techniques": [
+      "Constraint Enumeration",
+      "Output Format Specification",
+      "Few-Shot Prompting"
+    ],
+    "improved_prompt": "Create a Python class named `LRUCache` that implements a Least Recently Used (LRU) cache.\n\nYour implementation must adhere to the following requirements:\n1.  The class constructor `__init__` must accept a single integer argument, `capacity`, representing the maximum number of key-value pairs the cache can hold.\n2.  All `get` and `put` operations must achieve an average time complexity of O(1).\n3.  The cache must internally use a dictionary for efficient key lookups and a doubly linked list to manage the order of item usage, ensuring O(1) updates to the LRU order.\n4.  Implement a `get(key: int) -> int` method:\n    *   If `key` exists in the cache, return its corresponding `value` and update the `key`'s position to be the most recently used (front of the linked list).\n    *   If `key` does not exist, return -1.\n5.  Implement a `put(key: int, value: int) -> None` method:\n    *   If `key` already exists, update its `value` and move it to the most recently used position.\n    *   If `key` does not exist:\n        *   Insert the new `key-value` pair.\n        *   If the cache size exceeds its `capacity` after insertion, evict the least recently used item (from the tail of the linked list) before inserting the new item.\n\nThe expected output should be a complete Python class definition for `LRUCache`, including the constructor and both `get` and `put` methods. Include appropriate docstrings for the class and its methods.\n\nConsider the following examples for expected behavior:\n\nExample 1:\ncache = LRUCache(2)\ncache.put(1, 1)\ncache.put(2, 2)\nprint(cache.get(1)) # Expected: 1 (key 1 becomes most recently used)\ncache.put(3, 3) # Cache is full, evicts key 2 (least recently used)\nprint(cache.get(2)) # Expected: -1 (key 2 was evicted)\ncache.put(4, 4) # Cache is full, evicts key 1 (least recently used)\nprint(cache.get(1)) # Expected: -1 (key 1 was evicted)\nprint(cache.get(3)) # Expected: 3\nprint(cache.get(4)) # Expected: 4\n\nExample 2:\ncache = LRUCache(1)\ncache.put(2, 1)\nprint(cache.get(2)) # Expected: 1\ncache.put(3, 2) # Cache is full, evicts key 2\nprint(cache.get(2)) # Expected: -1\nprint(cache.get(3)) # Expected: 2",
+    "improvement_changes": [
+      {
+        "dimension": "clarity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "clarity",
+        "technique": "Output Format Specification"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Few-Shot Prompting"
+      }
+    ],
+    "elapsed_s": 24.88
+  },
+  {
+    "id": 9,
+    "expected_quality": "medium_high",
+    "prompt": "Write a Python function that takes a nested dictionary of arbitrary depth and flattens it into a single-level dictionary where keys are dot-separated paths. For example, `{'a': {'b': 1, 'c': {'d': 2}}}` becomes `{'a.b': 1, 'a.c.d': 2}`. Lists should be left as-is (not flattened). Type hint the function properly.",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 5,
+      "specificity": 4,
+      "completeness": 4,
+      "overall": 4.33
+    },
+    "explanations": {
+      "clarity": "The prompt is unambiguous, providing a clear description, a precise example, and explicit constraints.",
+      "specificity": "It specifies language, input/output types, a key constraint, and type hinting, but doesn't address keys containing dots.",
+      "completeness": "All essential context for the core flattening logic is provided, though minor details like dot-in-key handling are absent."
+    },
+    "code_quality_outlook": "Based on similar prompts achieving high correctness but average robustness and efficiency, the user can expect a functionally correct solution, but it might not be robust against unusual key structures or highly optimized.",
+    "summary": "1. Explicitly state expected behavior if dictionary keys themselves contain the dot separator. 2. Define the exact return type hint (e.g., `Dict[str, Any]`) for better precision. 3. Add a small example demonstrating a list value to reinforce the \"not flattened\" rule.",
+    "antipatterns": [],
+    "techniques": [
+      "Output Format Specification",
+      "Constraint Enumeration",
+      "Specification Pattern"
+    ],
+    "improved_prompt": "Write a Python function named flatten_dict that takes a nested dictionary data of arbitrary depth and returns a single-level dictionary. The function must adhere to the following requirements:1. Function Signature: def flatten_dict(data: dict) -> dict:.2. Key Flattening: Keys in the output dictionary must represent dot-separated paths from the original nested structure.3. Example: {'a': {'b': 1, 'c': {'d': 2}}} should become {'a.b': 1, 'a.c.d': 2}.4. Lists Handling: Lists encountered during flattening should be treated as atomic values and not further flattened.5. Dot in Original Keys: If an original key within the nested dictionary contains a literal dot (e.g., 'my.key'), it should be preserved as part of the key and not interpreted as a path separator. The dot separator is only introduced to form paths for nesting.6. Type Hinting: The function signature and any internal helper functions (if used) must be properly type-hinted.7. Docstring: Include a concise docstring explaining the function's purpose, parameters, and return value.",
+    "improvement_changes": [
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Specification Pattern"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Output Format Specification"
+      }
+    ],
+    "elapsed_s": 17.0
+  },
+  {
+    "id": 10,
+    "expected_quality": "high",
+    "prompt": "Build a GUI program based on tksheet that allows the creation of tables and editing of tables to save large amount of data. The data should be saved automatically. Use python 3.12 and modern features.",
+    "source": "dataset",
+    "dataset_scores": {
+      "clarity": 5,
+      "specificity": 4,
+      "completeness": 5
+    },
+    "scores": {
+      "clarity": 5,
+      "specificity": 4,
+      "completeness": 5,
+      "overall": 4.67
+    },
+    "explanations": {
+      "clarity": "The prompt is unambiguous, stating a clear intent to build a tksheet-based GUI for table creation, editing, and automatic saving.",
+      "specificity": "It specifies the language, library, and core functionality, but lacks details on data format, auto-save triggers, or error handling.",
+      "completeness": "The prompt provides all necessary context for the core task, including the primary tool, environment, and key functional requirements."
+    },
+    "code_quality_outlook": "Based on similar prompts, you can expect the generated code to have good correctness, robustness, and readability, but potentially average efficiency.",
+    "summary": "To improve the prompt, clarify the desired data storage format (e.g., CSV, JSON, database). Specify the trigger for 'automatic saving' (e.g., on edit, timed interval). Add detail on what 'creation of tables' entails (e.g., from scratch, importing a file).",
+    "antipatterns": [],
+    "techniques": [
+      "Decomposition Prompting",
+      "Structured XML/Markdown Prompting",
+      "Few-Shot Prompting"
+    ],
+    "improved_prompt": "Develop a Python 3.12 GUI application using tkinter and tksheet. The program must allow users to create, edit, add, and delete rows and columns in tables, designed to handle large datasets. Data should be automatically saved to a JSON file. Implement auto-saving upon any table modification (cell edit, row/column add/delete) and when the application window closes. The application should also load existing data from the JSON file upon startup. Include basic error handling for file operations and leverage modern Python features like type hinting to ensure robust and maintainable code.",
+    "improvement_changes": [
+      {
+        "dimension": "specificity",
+        "technique": "Decomposition Prompting"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Decomposition Prompting"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Decomposition Prompting"
+      }
+    ],
+    "elapsed_s": 22.22
+  },
+  {
+    "id": 11,
+    "expected_quality": "high",
+    "prompt": "Write a Python function `parse_csv_stream(stream: IO[str], delimiter: str = ',') -> Iterator[dict[str, str]]` that lazily parses a CSV input stream, yielding one row at a time as a dict mapping column headers (from the first row) to values. Handle quoted fields containing the delimiter. Raise `ValueError` if any row has a different number of fields than the header.",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 5,
+      "specificity": 4,
+      "completeness": 4,
+      "overall": 4.33
+    },
+    "explanations": {
+      "clarity": "The prompt uses precise language and a clear function signature, leaving no room for misinterpretation.",
+      "specificity": "It specifies language, types, core behavior, and error handling, but lacks detail on complex CSV quoting rules.",
+      "completeness": "All major requirements and input/output formats are provided, but minor CSV edge cases are left for interpretation."
+    },
+    "code_quality_outlook": "Similar prompts produced code with high correctness and readability, and average robustness and efficiency. This prompt is more specific about parsing rules and error conditions, suggesting high correctness and readability, but robustness might still be average due to unstated CSV edge cases.",
+    "summary": "To improve, add specific examples of CSV input and their expected parsed output, including edge cases. Detail how to handle more complex CSV quoting rules, such as escaped quotes within a field. Clarify expected behavior for empty lines or a stream containing only a header.",
+    "antipatterns": [],
+    "techniques": [
+      "Output Format Specification",
+      "Few-Shot Prompting",
+      "Structured XML/Markdown Prompting"
+    ],
+    "improved_prompt": "<task>Write a Python function `parse_csv_stream(stream: IO[str], delimiter: str = ',') -> Iterator[dict[str, str]]`.This function should lazily parse a CSV input stream, yielding one row at a time.Each row should be represented as a dictionary where keys are column headers (from the first row) and values are the corresponding string values.The function must correctly handle fields enclosed in double quotes, including scenarios where the delimiter character appears within the quoted field.Specifically, it should interpret `\"\"` within a quoted field as a single literal double quote character (`\"`).Raise a `ValueError` if any non-header row contains a different number of fields than the header row.Include a comprehensive docstring explaining the function's purpose, parameters, return value, and exceptions.</task><examples><example><input_csv>Name,City,Notes\n\"Alice\",\"New York\",\"He said \"\"Hello!\"\".\"\nBob,\"Los Angeles\",\"This, is, a, test.\"\nJane,,Empty field test</input_csv><expected_output>yield {\"Name\": \"Alice\", \"City\": \"New York\", \"Notes\": \"He said \\\"Hello!\\\".\"}\nyield {\"Name\": \"Bob\", \"City\": \"Los Angeles\", \"Notes\": \"This, is, a, test.\"}\nyield {\"Name\": \"Jane\", \"City\": \"\", \"Notes\": \"Empty field test\"}</expected_output></example></examples>",
+    "improvement_changes": [
+      {
+        "dimension": "specificity",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Few-Shot Prompting"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Output Format Specification"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Structured XML/Markdown Prompting"
+      }
+    ],
+    "elapsed_s": 26.08
+  },
+  {
+    "id": 12,
+    "expected_quality": "very_high",
+    "prompt": "Write a Python async context manager `class ConnectionPool` that manages a pool of database connections. Constructor takes `dsn: str`, `min_size: int = 2`, `max_size: int = 10`. On `async with pool.acquire() as conn:` it should: (1) return an idle connection if available, (2) create a new one if below max_size, or (3) await until one is released. Use `asyncio.Condition` for waiting. Connections should implement a `Connection` protocol with `async execute(query: str, params: tuple[Any, ...] = ()) -> list[Row]` and `async close() -> None`. On pool `__aexit__`, close all connections. Handle the case where a connection becomes stale (idle > 60s) by discarding and creating fresh on acquire.",
+    "source": "synthetic",
+    "dataset_scores": null,
+    "scores": {
+      "clarity": 5,
+      "specificity": 4,
+      "completeness": 3,
+      "overall": 4.0
+    },
+    "explanations": {
+      "clarity": "The prompt is unambiguous, providing precise language and clear instructions for the connection pool's behavior.",
+      "specificity": "Most requirements are highly specific, including types, method signatures, and a detailed stale connection policy.",
+      "completeness": "The prompt lacks concrete details on the database driver to use or how to instantiate the `Connection` objects."
+    },
+    "code_quality_outlook": "The similar prompts produced code with average correctness, robustness, and efficiency. This prompt's high clarity on the pooling logic may lead to good correctness in that area, but missing details about connection creation and error handling might result in less robust or correct code for actual database interaction.",
+    "summary": "The prompt clearly defines the connection pool's logic and the `Connection` protocol. To improve, explicitly name a Python async database driver (e.g., `asyncpg`) and provide a mock or factory function for creating new `Connection` instances. Also, specify error handling for connection failures and pool exhaustion.",
+    "antipatterns": [],
+    "techniques": [
+      "Error Handling Specification",
+      "Constraint Enumeration",
+      "Negative Prompting"
+    ],
+    "improved_prompt": "Write a Python async context manager class ConnectionPool that manages a pool of database connections using the asyncpg library. The constructor takes dsn: str, min_size: int = 2, max_size: int = 10.\nThe ConnectionPool must satisfy the following requirements:\n1.  Connection Management: The pool should manage instances of asyncpg.Connection.\n2.  Acquire Logic: When async with pool.acquire() as conn: is called:\n    a.  If an idle asyncpg.Connection is available in the pool, return it immediately.\n    b.  If the total number of connections (idle + in-use) is less than max_size, create a new asyncpg.Connection instance using await asyncpg.connect(dsn) and return it.\n    c.  If the pool is at max_size and no connections are idle, block asynchronously until an existing connection is released. Use asyncio.Condition for this waiting mechanism.\n3.  Stale Connection Handling: Before returning a connection, check if it has been idle for more than 60 seconds. If stale, await conn.close(), discard it from the pool, and then attempt to acquire or create a fresh connection by re-applying the acquire logic (2a, 2b, 2c).\n4.  Connection Protocol Compliance: Connections returned by acquire() must be asyncpg.Connection objects, which inherently provide async execute(query: str, params: tuple[Any, ...] = ()) -> list[asyncpg.Record] and async close() -> None.\n5.  Pool Shutdown: On ConnectionPool.__aexit__, gracefully await conn.close() for all connections currently in the pool.\n6.  Robust Error Handling:\n    a.  If asyncpg.connect(dsn) fails during connection creation, log the error and raise a ConnectionError.\n    b.  If a connection's execute method encounters an error, the connection should be considered broken, discarded from the pool, and a new connection should be created on the next acquire attempt if max_size allows.\n    c.  Ensure that acquire and release operations are atomic within the asyncio event loop to prevent race conditions.\n\nNegative Constraints:\n- Do not use blocking operations like time.sleep(). All I/O and waiting must be asynchronous and compatible with asyncio.\n- Do not implement a separate Connection wrapper class unless it's strictly necessary for managing state beyond what asyncpg.Connection provides directly; the pool should manage raw asyncpg.Connection objects.",
+    "improvement_changes": [
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "specificity",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "completeness",
+        "technique": "Constraint Enumeration"
+      },
+      {
+        "dimension": "robustness",
+        "technique": "Error Handling Specification"
+      },
+      {
+        "dimension": "clarity",
+        "technique": "Negative Prompting"
+      }
+    ],
+    "elapsed_s": 25.33
+  }
+]

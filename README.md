@@ -3,37 +3,70 @@
 [![License][license-img]][license-url]&nbsp;
 [![Python][py-img]][py-url]
 
-A multimodal tool for analysing and optimizing coding prompts, grounded in the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset.
+A tool for analysing and optimizing coding prompts, grounded in the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset (~26K scored prompt–code pairs).
 
-> [!IMPORTANT]
-> Requires Python 3.13+
+Built as a research artefact investigating the correlation between prompt quality and code quality in developer–LLM conversations.
 
-## Background
+### Install
 
-This tool was created as a research artefact from an investigation into the correlation between prompt quality and code quality in developer–LLM code conversations, where we created and analysed the [prompt2code-eval](https://huggingface.co/datasets/darragh0/prompt2code-eval) dataset (~26K scored prompt–code pairs).
+Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
 
-The source code for the tool is in `app/`; the preprocessing pipeline that produced the dataset is in `preproc/`.
+```
+git clone https://github.com/darragh0/choptimize.git
+cd choptimize
+uv sync
+```
 
-### Structure
+### Usage
 
-| Package      | Description                              |
+**CLI**
+
+```
+uv run python -m app "Your prompt here"
+```
+
+Options:
+
+- `-i, --improve` — generate an improved version of the prompt
+- `-s, --service {ollama,openai,gemini}` — LLM service (default: ollama)
+- `-m, --model NAME` — model name
+- `-k, --api-key KEY` — API key (required for openai/gemini)
+
+Example:
+
+```
+uv run python -m app "Write a Python function that sorts a list" -s ollama -i
+```
+
+**Web**
+
+```
+uv run python -m app web
+```
+
+Opens at `http://127.0.0.1:8000`.
+
+### Project structure
+
+| Directory    | Description                              |
 | ------------ | ---------------------------------------- |
-| `preproc/`   | Dataset creation: preprocessing pipeline |
-| `analysis/`  | Statistical analysis                     |
-| `app/`       | CLI / web app tool                       |
+| `app/`       | CLI and web interface                    |
+| `preproc/`   | Dataset preprocessing pipeline           |
+| `analysis/`  | Statistical analysis and visualisations  |
+| `eval/`      | Evaluation suite                         |
 
 ### Preprocessing
 
-| Script                | Description                                |
-| --------------------- | ------------------------------------------ |
-| `preproc/download.py` | Download CodeChat-V2.0 dataset             |
-| `preproc/filter.py`   | Filter to English prompts with Python code |
-| `preproc/syntax.py`   | Syntactic analysis (ruff & radon)          |
-| `preproc/semantics.py`| Semantic analysis of prompt-code pairs     |
+The `preproc/` pipeline builds the prompt2code-eval dataset from CodeChat-V2.0:
 
-See: [`preproc/README.md`](./preproc/README.md)
+| Script                 | Description                                |
+| ---------------------- | ------------------------------------------ |
+| `preproc/download.py`  | Download CodeChat-V2.0 dataset             |
+| `preproc/filter.py`    | Filter to English prompts with Python code |
+| `preproc/syntax.py`    | Syntactic analysis (ruff & radon)          |
+| `preproc/semantics.py` | Semantic analysis of prompt–code pairs     |
 
-!!! TODO: run instructions
+See [`preproc/README.md`](./preproc/README.md) for details.
 
 ### Citation
 

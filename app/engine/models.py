@@ -42,6 +42,7 @@ class ScoreResult(BaseModel):
     specificity: DimensionScore
     completeness: DimensionScore
     summary: str
+    code_quality_outlook: str = ""
 
     @property
     def overall(self) -> ScoreCont:

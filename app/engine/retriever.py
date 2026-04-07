@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Final, cast
 import chromadb
 import transformers.utils.logging as tf_logging
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-from common.utils.dataset import load_ds
 
 from app.engine.models import Antipattern, SimilarPrompt, Technique, TechniquesSchema
+from app.engine.types import CODE_DIMS, PROMPT_DIMS
+from common.utils.dataset import load_ds
 from preproc.utils.progress import tracked
 
 if TYPE_CHECKING:
@@ -27,9 +28,6 @@ _EMBED_MODEL: Final = "all-MiniLM-L6-v2"
 
 _DS_NAME: Final = "darragh0/prompt2code-eval"
 _DS_REVISION: Final = "1c01b1b582c8d929f24fc05a13e108ee31de8a0d"
-
-PROMPT_DIMS: Final = ("clarity", "specificity", "completeness")
-CODE_DIMS: Final = ("correctness", "robustness", "readability", "efficiency")
 
 
 _ANTIPATTERN_SIGNALS: Final[dict[str, list[str]]] = {
@@ -137,7 +135,8 @@ class Retriever:
             self._prompts.add(ids=b_ids, documents=b_docs, metadatas=b_meta)
 
     def find_similar_prompts(self, prompt: str, n: int = 3) -> list[SimilarPrompt]:
-        results = self._prompts.query(query_texts=[prompt], n_results=n)
+        # Fetch extra results to allow deduplication by prompt text
+        results = self._prompts.query(query_texts=[prompt], n_results=n * 3)
 
         documents = results.get("documents") or []
         metadatas = results.get("metadatas") or []
@@ -145,12 +144,20 @@ class Retriever:
         if not any((documents, metadatas, distances)):
             return []
 
-        out = []
+        seen: set[str] = set()
+        out: list[SimilarPrompt] = []
         for doc, meta, dist in zip(documents[0], metadatas[0], distances[0], strict=False):
+            text = str(doc)
+            truncated = text[:200]
+            if truncated in seen:
+                continue
+            seen.add(truncated)
             scores = {
                 k: int(v) for k, v in (meta or {}).items() if k in (*PROMPT_DIMS, *CODE_DIMS) and isinstance(v, int)
             }
-            out.append(SimilarPrompt(prompt=str(doc), scores=scores, distance=float(dist)))
+            out.append(SimilarPrompt(prompt=text, scores=scores, distance=float(dist)))
+            if len(out) >= n:
+                break
         return out
 
     def find_techniques(self, prompt: str, weak_dims: list[str] | None = None, n: int = 3) -> list[Technique]:

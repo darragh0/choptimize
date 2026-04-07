@@ -1,20 +1,31 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING
 
 from app.engine.improver import improve_prompt
 from app.engine.llm import LLMClient
 from app.engine.models import AnalysisResult
 from app.engine.retriever import Retriever
 from app.engine.scorer import score_prompt
+from app.engine.validator import validate
+
+if TYPE_CHECKING:
+    from app.engine.types import LLMService
 
 
 class Engine:
     _llm: LLMClient
     _retriever: Retriever | None
 
-    def __init__(self, model: str | None = None, llm_url: str | None = None, api_key: str | None = None) -> None:
-        self._llm = LLMClient(base_url=llm_url, model=model, api_key=api_key)
+    def __init__(
+        self,
+        service: LLMService | None = None,
+        model: str | None = None,
+        llm_url: str | None = None,
+        api_key: str | None = None,
+    ) -> None:
+        self._llm = LLMClient(service=service or "ollama", base_url=llm_url, model=model, api_key=api_key)
         self._retriever = None
 
     @property
@@ -24,7 +35,10 @@ class Engine:
         return self._retriever
 
     def analyze(self, prompt: str, *, improve: bool = False, show_raw: bool) -> AnalysisResult:
-        # Retrieval first — results feed into scorer
+        if msg := validate(prompt):
+            raise ValueError(msg)
+
+        # Retrieval first, results feed into scorer
         with ThreadPoolExecutor(max_workers=3) as pool:
             similar_fut = pool.submit(self.retriever.find_similar_prompts, prompt)
             techniques_fut = pool.submit(self.retriever.find_techniques, prompt)
